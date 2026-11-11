@@ -3049,6 +3049,10 @@ async function dgn(i) {
         return s && s.kind && inst[s.kind] ? s.kind : null
     }
 
+    function slotFor(k) {
+        return k === "deagle" ? 2 : 1
+    }
+
     function active() {
         let k = kindAt(cur);
         return k ? inst[k] : null
@@ -3175,21 +3179,22 @@ async function dgn(i) {
     function doPickup() {
         let n = nearestPickup();
         if (!n) return !1;
-        let s = slots[cur - 1],
+        let bk = n.p.kind,
+            tgt = slotFor(bk),
+            ts = slots[tgt - 1],
             px = n.p.pos.x,
             pz = n.p.pos.z,
             py = n.p.pos.y,
-            bk = n.p.kind,
             bm = n.p.mag;
         removePickup(n.p);
-        let old = s.kind && inst[s.kind] ? inst[s.kind] : null;
+        let old = ts.kind && inst[ts.kind] ? inst[ts.kind] : null;
         if (old) {
             let oldAmmo = old.ammo;
-            old.cancelReload && old.cancelReload(), old.reset && old.reset(), spawnPickup(s.kind, px, pz, oldAmmo, py + 1)
+            old.cancelReload && old.cancelReload(), old.reset && old.reset(), spawnPickup(ts.kind, px, pz, oldAmmo, py + 1)
         }
-        s.kind = bk, syncSlot(s);
+        ts.kind = bk, syncSlot(ts);
         let ni = inst[bk];
-        return ni && (ni.cancelReload && ni.cancelReload(), ni.reset && ni.reset(), ni.ammo = bm), applyVis(), buf = .32, setNoFire(!0), click(), !0
+        return ni && (ni.cancelReload && ni.cancelReload(), ni.reset && ni.reset(), ni.ammo = bm), tgt !== cur ? switchTo(tgt) : (applyVis(), buf = .32, setNoFire(!0), click(), !0)
     }
 
     function doDrop() {
