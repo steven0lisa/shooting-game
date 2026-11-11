@@ -1892,12 +1892,13 @@ function hM(i) {
         S = li("div", "h-health", '<div class="h-k">生命状态</div><div class="h-hp-row"><b class="h-hp-n">100</b><div class="h-hp-bar">' + "<i></i>".repeat(10) + "</div></div>"),
         z = S.querySelector(".h-hp-n"),
         H = [...S.querySelectorAll(".h-hp-bar i")],
-        O = li("div", "h-ammo", '<div class="h-cue"></div><div class="h-ammo-row"><b class="h-ammo-n">30</b><span class="h-ammo-r">120</span></div><div class="h-pips"></div><div class="h-wname"></div>'),
+        O = li("div", "h-ammo", '<div class="h-cue"></div><div class="h-ammo-row"><b class="h-ammo-n">30</b><span class="h-ammo-r">120</span></div><div class="h-pips"></div><div class="h-wname"></div><div class="h-slots"><b data-s="1" class="on">1 主武器</b><b data-s="2">2 沙漠之鹰</b></div>'),
         q = O.querySelector(".h-ammo-n"),
         U = O.querySelector(".h-ammo-r"),
         T = O.querySelector(".h-pips"),
         D = O.querySelector(".h-wname"),
         C = O.querySelector(".h-cue"),
+        SL = [...O.querySelectorAll(".h-slots b")],
         G = li("div", "h-marks");
     t.append(G, n, c, d, y, v, x, m, E, w, S, O), e.appendChild(t);
     let j = li("div", "comms", '<span class="comms-who">指挥中心</span><span class="comms-t"></span>');
@@ -1913,6 +1914,7 @@ function hM(i) {
             mag: -1,
             reserve: -1,
             name: null,
+            slot: -1,
             cue: null,
             low: null,
             hp: -1,
@@ -2128,14 +2130,16 @@ function hM(i) {
         }
         let Ne = Math.max(1, Math.min(60, ve.magSize | 0 || 30)),
             dt = Math.max(0, ve.ammo | 0),
-            xe = Math.max(0, ve.reserve | 0);
+            inf = ve.reserve < 0,
+            xe = inf ? -1 : Math.max(0, ve.reserve | 0);
         if (Ne !== X.mag && (X.mag = Ne, T.innerHTML = "<i></i>".repeat(Ne), ne = [...T.children], X.ammo = -1), dt !== X.ammo) {
             X.ammo = dt, q.textContent = String(dt).padStart(2, "0");
             for (let we = 0; we < ne.length; we++) ne[we].className = we < dt ? "" : "off"
-        }
-        xe !== X.reserve && (X.reserve = xe, U.textContent = String(xe).padStart(3, "0")), ve.name !== X.name && (X.name = ve.name, D.textContent = ve.name || "");
+        }(inf ? X.reserve !== -2 : xe !== X.reserve) && (X.reserve = inf ? -2 : xe, U.textContent = inf ? "∞" : String(xe).padStart(3, "0")), ve.name !== X.name && (X.name = ve.name, D.textContent = ve.name || "");
+        let Gs = ve.slot | 0 || 1;
+        Gs !== X.slot && (X.slot = Gs, SL.forEach(wb => wb.classList.toggle("on", +wb.dataset.s === Gs)));
         let Ie = dt <= Math.ceil(Ne * .27),
-            Be = ve.state === "reloading" ? "换弹中" : dt === 0 ? xe > 0 ? i.input.touch ? "换弹" : "R · 换弹" : "弹药耗尽" : Ie ? "弹药不足" : "";
+            Be = ve.state === "reloading" ? "换弹中" : dt === 0 ? inf || xe > 0 ? i.input.touch ? "换弹" : "R · 换弹" : "弹药耗尽" : Ie ? "弹药不足" : "";
         Be !== X.cue && (X.cue = Be, C.textContent = Be, C.className = "h-cue" + (Be ? " on" : "") + (dt === 0 && ve.state !== "reloading" ? " urgent" : "")), Ie !== X.low && (X.low = Ie, O.classList.toggle("low", Ie));
         let Xe = Math.max(0, Math.ceil(ce.health)),
             Me = ce.health < ce.maxHealth - .5;
@@ -3142,7 +3146,7 @@ async function QC() {
             });
             t.scene.add(h)
         }
-        t.physics.build(), await Nr("正在加载弹道与烟雾", .66), await r("fx", "fx", () => Cf(t)), await r("audio", "audio", () => i.noaudio ? dr.audio() : c_(t)), t.player = x_(t), t.combat = zv(t), await Nr("正在检查几猫制式步枪", .74), await r("weapon", "weapon", () => dm(t)), await Nr("正在启动港区主控", .82), await r("enemies", "enemies", () => Em(t)), await r("hud", "hud", () => hM(t)), t.game = mM(t)
+        t.physics.build(), await Nr("正在加载弹道与烟雾", .66), await r("fx", "fx", () => Cf(t)), await r("audio", "audio", () => i.noaudio ? dr.audio() : c_(t)), t.player = x_(t), t.combat = zv(t), await Nr("正在检查几猫制式步枪", .74), await r("weapon", "weapon", () => dgn(t)), await Nr("正在启动港区主控", .82), await r("enemies", "enemies", () => Em(t)), await r("hud", "hud", () => hM(t)), t.game = mM(t)
     }
     await Nr("正在准备首帧画面", .92);
     try {

@@ -20,6 +20,9 @@ shooting-game/
 │   │   └── 99-entry.js        # IIFE 尾（40B）：QC().catch(...)，启动调用
 │   └── …
 ├── shaders/                   # 从包内抽出的 GLSL 22 个（只读参考，不进构建）
+├── assets/                    # 外部素材（沙漠之鹰 GLB + CC0 音效，署名见 ASSETS.md）
+│   ├── models/desert-eagle.glb
+│   └── audio/
 ├── notes/                     # 逐模块解析笔记（9 份）——改代码前先读对应笔记
 ├── scripts/
 │   └── build.sh               # 拼接构建：src → dist/game.js（src/raw 双模式）
@@ -44,7 +47,7 @@ shooting-game/
 | 05 | 05-backdrop.js | `mv` (create: pv, showcase: MR) | 背景：岸桥吊机/货轮/小艇/天际线/海鸥顶点动画/几何工具箱（⚠️ 原命名 materials，实为 backdrop） | notes/05-backdrop.md |
 | 06 | 06-sea.js | `vv` (create: O1, showcase: BR) | 海面 Gerstner 波/平面反射/湿地 apron/雨系统（室内剔除）/thunder 事件 | notes/06-sea.md |
 | 07 | 07-player-fx.js | `Sv` (create: Cf, showcase: JR) | 输入三重降级/玩家控制器/战斗判定/粒子 FX 池/弹壳物理/WebAudio 合成引擎（⚠️ 名字只覆盖一半） | notes/07-player-fx.md |
-| 08 | 08-weapons.js | `Xv` (create: dm, showcase: PC) | 武器视模（几猫九式步枪+HX-2 瞄具）/手臂骨骼/铭牌/风化 | notes/08-weapons.md |
+| 08 | 08-weapons.js | `Xv` (create: dgn, showcase: PC) | 武器系统：PAC-9 步枪视模（`dm`）+ 沙漠之鹰（尾部 `DGK/dgBuild/dgn`，含最小 GLB 加载器与双武器门面）/手臂骨骼/铭牌/风化 | notes/08-weapons.md |
 | 09 | 09-game-ui.js | `ex` (TUNE: Ui, create: Em, showcase: VC) | 游戏主控：状态机/任务目标/敌人 AI（hound/gull）/rig 骨骼/HUD/菜单/结算 + 启动器主循环 `QC` | notes/09-game-ui.md |
 | — | 99-entry.js | — | IIFE 尾：`QC().catch(...)` 启动调用 | — |
 

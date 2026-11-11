@@ -4588,18 +4588,32 @@ function u_(i, e, t) {
             }
         })
     };
-    ln("weapon:fire", () => {
-        I = I + 1 & 3, ze("rifle_shot", {
+    ln("weapon:fire", he => {
+        I = I + 1 & 3, ze(he && he.w === "deagle" ? "pistol_shot" : "rifle_shot", {
+            variant: I,
+            gain: 1,
+            jitter: .012
+        }) || ze("rifle_shot", {
             variant: I,
             gain: 1,
             jitter: .012
         });
         let te = e.currentTime;
         le = te, te - R > .28 && fo(1), J = Math.min(J, .55), Y > .3 && (Y = Math.min(1, Y + .015))
-    }), ln("weapon:dry", () => ze("rifle_dry", {
+    }), ln("weapon:dry", te => ze(te && te.w === "deagle" ? "pistol_dry" : "rifle_dry", {
+        gain: .9
+    }) || ze("rifle_dry", {
         gain: .9
     })), ln("weapon:reload", te => {
-        te.phase === "magout" ? ze("reload_magout") : te.phase === "magin" ? ze("reload_magin") : te.phase === "bolt" ? ze("reload_bolt") : te.phase === "start" && ze("jump", {
+        if (te && te.w === "deagle") {
+            te.phase === "magout" ? ze("pistol_magout") : te.phase === "magin" ? ze("pistol_magin") : te.phase === "bolt" ? ze("pistol_bolt") : te.phase === "tap" ? ze("pistol_click", {
+                gain: .45,
+                pitch: 1.15
+            }) : te.phase === "start" && ze("pistol_click", {
+                gain: .55,
+                pitch: .9
+            })
+        } else te.phase === "magout" ? ze("reload_magout") : te.phase === "magin" ? ze("reload_magin") : te.phase === "bolt" ? ze("reload_bolt") : te.phase === "start" && ze("jump", {
             gain: .5,
             pitch: 1.3
         })
@@ -5129,6 +5143,8 @@ var h_ = {
         Escape: "pause",
         KeyP: "pause",
         KeyQ: "alt",
+        Digit1: "weapon1",
+        Digit2: "weapon2",
         Enter: "fire",
         NumpadEnter: "fire",
         ArrowLeft: "turnL",
@@ -5331,7 +5347,7 @@ function v_(i) {
 
     function N() {
         let P = document.createElement("div");
-        P.className = "touch", P.innerHTML = '<div class="t-stick"><i class="t-ring"></i><i class="t-nub"></i></div><button class="t-btn t-fire" data-a="fire" aria-label="开火"><span>开火</span></button><button class="t-btn t-ads" data-a="ads" aria-label="瞄准"><span>瞄准</span></button><button class="t-btn t-reload" data-a="reload" aria-label="换弹"><span>换弹</span></button><button class="t-btn t-jump" data-a="jump" aria-label="跳跃"><span>跳跃</span></button><button class="t-btn t-interact" data-a="interact" aria-label="Interact"><span>交互</span></button><button class="t-btn t-pause" data-a="pause" aria-label="暂停"><span>暂停</span></button>', t.appendChild(P);
+        P.className = "touch", P.innerHTML = '<div class="t-stick"><i class="t-ring"></i><i class="t-nub"></i></div><button class="t-btn t-fire" data-a="fire" aria-label="开火"><span>开火</span></button><button class="t-btn t-ads" data-a="ads" aria-label="瞄准"><span>瞄准</span></button><button class="t-btn t-reload" data-a="reload" aria-label="换弹"><span>换弹</span></button><button class="t-btn t-jump" data-a="jump" aria-label="跳跃"><span>跳跃</span></button><button class="t-btn t-interact" data-a="interact" aria-label="Interact"><span>交互</span></button><button class="t-btn t-swap" data-a="weapon2" aria-label="切枪"><span>切枪</span></button><button class="t-btn t-pause" data-a="pause" aria-label="暂停"><span>暂停</span></button>', t.appendChild(P);
         let V = L => P.querySelector(L),
             Y = {
                 root: P,
@@ -5343,6 +5359,7 @@ function v_(i) {
                     reload: V(".t-reload"),
                     jump: V(".t-jump"),
                     interact: V(".t-interact"),
+                    weapon2: V(".t-swap"),
                     pause: V(".t-pause")
                 }
             };

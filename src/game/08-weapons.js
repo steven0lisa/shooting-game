@@ -1,6 +1,6 @@
 var Xv = {};
 br(Xv, {
-    create: () => dm,
+    create: () => dgn,
     showcase: () => PC
 });
 var im = (i, e, t) => {
@@ -1975,6 +1975,7 @@ async function dm(i) {
         },
         ve = {
             name: mi.name,
+            kind: "pac9",
             ammo: Gv,
             magSize: Gv,
             reserve: B_,
@@ -1996,6 +1997,9 @@ async function dm(i) {
             },
             muzzleWorld: Re,
             reloadNow: Fe,
+            cancelReload() {
+                k.reload = null, k.reloadW = 0, k.rackW = 0
+            },
             addAmmo(Me) {
                 ve.reserve += Me
             },
@@ -2057,7 +2061,8 @@ async function dm(i) {
             f: {}
         }, k.autoReload = -1, i.events.emit("weapon:reload", {
             phase: "start",
-            empty: Me
+            empty: Me,
+            w: "pac9"
         }), !0
     }
     let ze = new gi,
@@ -2088,7 +2093,8 @@ async function dm(i) {
             origin: Ie,
             dir: ze,
             muzzle: We,
-            ads: k.adsE
+            ads: k.adsE,
+            w: "pac9"
         });
         let bt = bi(1, .55, k.adsE) * (Me.crouching ? .85 : 1),
             Os = k.burst,
@@ -2126,7 +2132,8 @@ async function dm(i) {
             let Pt = Je.t,
                 Vt = (Tt, Ai) => Pt >= Ai && !Je.f[Tt] ? (Je.f[Tt] = 1, i.events.emit("weapon:reload", {
                     phase: Tt,
-                    empty: Je.empty
+                    empty: Je.empty,
+                    w: "pac9"
                 }), !0) : !1;
             if (Vt("magout", me) && (k.bump.v -= .25), Pt > .86 && !Je.f.fresh && (Je.f.fresh = 1, d.visible = !0), Vt("magin", ee)) {
                 k.bump.v += .55;
@@ -2137,7 +2144,8 @@ async function dm(i) {
             let ss = Yo(Pt / .3),
                 Hs = 1 - Yo((Pt - (Je.T - .46)) / .4);
             k.reloadW = Math.min(ss, Hs), k.rackW = Je.empty ? Yo((Pt - 1.62) / .3) * Hs : 0, Pt >= Je.T && ce.reloadT == null && (k.reload = null, k.reloadW = 0, k.rackW = 0, i.events.emit("weapon:reload", {
-                phase: "done"
+                phase: "done",
+                w: "pac9"
             }), q.position.copy(G.p), q.quaternion.copy(G.q))
         }
         k.cooldown -= Me;
@@ -2146,7 +2154,9 @@ async function dm(i) {
             if (ve.ammo > 0) {
                 let Je = 0;
                 for (; k.cooldown <= 0 && ve.ammo > 0 && Je < 3;) Be(), k.cooldown += 60 / O_, Je++
-            } else k.dryDone || (k.dryDone = !0, i.events.emit("weapon:dry", {}), k.bump.v -= .08, ve.reserve > 0 && (k.autoReload = .32));
+            } else k.dryDone || (k.dryDone = !0, i.events.emit("weapon:dry", {
+                w: "pac9"
+            }), k.bump.v -= .08, ve.reserve > 0 && (k.autoReload = .32));
         k.cooldown < 0 && (k.cooldown = Math.max(k.cooldown, -.001)), k.t - k.lastShot > .24 && (k.burst > 0 && (k.recPhase = ae() * 6.28), k.burst = 0), k.bloom = Math.max(0, k.bloom - Me * 1.5), k.t - k.lastShot > .11 && k.t - k.lastShot < .11 + Me * 1.5 && k.heat > .4 && (k.smoke = Math.min(1.6, k.heat * 1.3)), k.smoke > 0 && (k.smoke -= Me, k.smokeTick -= Me, k.smokeTick <= 0 && i.fx && i.fx.smoke && (k.smokeTick = .085, Re(We), i.fx.smoke(We, {
             size: .1 + k.smoke * .06,
             life: 1.3,
@@ -2277,6 +2287,593 @@ async function PC(i) {
         target: c.target,
         update(u) {
             e.update(u), a === "fire" && (e.debug.flash = !0)
+        }
+    }
+}
+/* ============================================================ 武器 2：沙漠之鹰（DGK / dgn / dgBuild）
+   外部素材：assets/models/desert-eagle.glb（poly.pizza "Rigged Desert Eagle" by PuKkBuMXDD，CC-BY 3.0）
+   音效 assets/audio/*（OpenGameArt CC0）——署名清单见 ASSETS.md
+   设计：7 发弹匣、无限备弹（reserve=-1，HUD 显 ∞）、半自动 210 RPM 上限、
+   伤害 55 / 射程 120（.50 AE 重弹：近距停下力大、远距存速差）、后坐与 bloom 显著高于步枪 */
+var DGK = {
+        name: "沙漠之鹰",
+        kind: "deagle",
+        mag: 7,
+        reserve: -1,
+        rpm: 210,
+        damage: 55,
+        range: 120,
+        reloadT: 2.15,
+        reloadE: 2.85,
+        magout: .55,
+        magin: 1.45,
+        tap: 1.62,
+        bolt: 2.45,
+        hipP: [.135, -.158, -.3],
+        hipR: [.03, .06, -.02],
+        adsP: [0, -.104, -.2],
+        adsR: [0, 0, 0],
+        reloadP: [0, -.09, .05],
+        reloadR: [-.55, .12, -.18],
+        len: .3
+    },
+    dgLerp = (i, e, t) => i + (e - i) * t,
+    dgClamp = (i, e, t) => i < e ? e : i > t ? t : i;
+
+function dgSmooth(i, e, t, n) {
+    return i + (e - i) * (1 - Math.exp(-t * n))
+}
+async function dgGlb(i) {
+    let e = await (await fetch(i)).arrayBuffer(),
+        t = new DataView(e);
+    if (t.getUint32(0, !0) !== 0x46546c67) throw new Error("[deagle] not a glb file");
+    let n = 12,
+        s = null,
+        o = null;
+    for (; n < e.byteLength;) {
+        let u = t.getUint32(n, !0),
+            h = t.getUint32(n + 4, !0);
+        h === 0x4e4f534a ? s = JSON.parse(new TextDecoder().decode(new Uint8Array(e, n + 8, u))) : h === 0x004e4942 && (o = e.slice(n + 8, n + 8 + u)), n += 8 + u
+    }
+    let r = new DataView(o),
+        a = {
+            5120: 1,
+            5121: 1,
+            5122: 2,
+            5123: 2,
+            5125: 4,
+            5126: 4
+        },
+        l = {
+            SCALAR: 1,
+            VEC2: 2,
+            VEC3: 3,
+            VEC4: 4,
+            MAT4: 16
+        };
+
+    function c(u, h) {
+        let f = s.accessors[u],
+            p = s.bufferViews[f.bufferView],
+            d = a[f.componentType],
+            v = l[f.type],
+            g = p.byteStride || d * v,
+            y = (p.byteOffset || 0) + (f.byteOffset || 0),
+            b = h ? new Uint32Array(f.count) : new Float32Array(f.count * v);
+        for (let m = 0; m < f.count; m++)
+            for (let A = 0; A < v; A++) {
+                let _ = y + m * g + A * d,
+                    S;
+                switch (f.componentType) {
+                    case 5126:
+                        S = r.getFloat32(_, !0);
+                        break;
+                    case 5125:
+                        S = r.getUint32(_, !0);
+                        break;
+                    case 5123:
+                        S = r.getUint16(_, !0);
+                        break;
+                    case 5121:
+                        S = r.getUint8(_);
+                        break;
+                    case 5122:
+                        S = r.getInt16(_, !0);
+                        break;
+                    default:
+                        S = r.getInt8(_)
+                }
+                h ? b[m] = S : b[m * v + A] = S
+            }
+        return b
+    }
+    let u = [];
+    for (let f of s.images || []) {
+        if (f.bufferView != null) try {
+            let p = s.bufferViews[f.bufferView],
+                d = new Uint8Array(o, p.byteOffset || 0, p.byteLength),
+                v = await createImageBitmap(new Blob([d], {
+                    type: f.mimeType || "image/png"
+                })),
+                g = document.createElement("canvas");
+            g.width = v.width, g.height = v.height, g.getContext("2d").drawImage(v, 0, 0);
+            let y = new lt.CanvasTexture(g);
+            y.colorSpace = "srgb", u.push(y)
+        } catch {
+            u.push(null)
+        } else u.push(null)
+    }
+    let h = (s.materials || []).map(f => {
+        let p = f.pbrMetallicRoughness || {},
+            d = p.baseColorFactor || [1, 1, 1, 1],
+            v = (d[0] + d[1] + d[2]) / 3 > .42,
+            g = new lt.MeshStandardMaterial({
+                color: v ? 0x3c434b : 0x191c21,
+                metalness: v ? .88 : .55,
+                roughness: v ? .38 : .62
+            });
+        return p.baseColorTexture && u[p.baseColorTexture.index] && (g.map = u[p.baseColorTexture.index], g.color.set(0xffffff)), g
+    });
+    h.length || h.push(new lt.MeshStandardMaterial({
+        color: 0x2c3238,
+        metalness: .8,
+        roughness: .45
+    }));
+    let f = new lt.Group,
+        p = [],
+        d = new lt.Matrix4,
+        bp = [];
+
+    function v(y, b, B) {
+        let m = s.nodes[y],
+            A = new lt.Matrix4();
+        if (m.matrix) A.fromArray(m.matrix);
+        else {
+            let S = m.translation || [0, 0, 0],
+                T = m.rotation || [0, 0, 0, 1],
+                w = m.scale || [1, 1, 1];
+            A.compose(new lt.Vector3(S[0], S[1], S[2]), new lt.Quaternion(T[0], T[1], T[2], T[3]), new lt.Vector3(w[0], w[1], w[2]))
+        }
+        if (A.premultiply(b), m.name && p.push(m.name), !B && m.name && /barrel/i.test(m.name) && (B = !0), m.mesh != null)
+            for (let S of s.meshes[m.mesh].primitives) {
+                let T = new lt.BufferGeometry;
+                T.setAttribute("position", new lt.Float32BufferAttribute(c(S.attributes.POSITION), 3)), S.attributes.NORMAL != null && T.setAttribute("normal", new lt.Float32BufferAttribute(c(S.attributes.NORMAL), 3)), S.attributes.TEXCOORD_0 != null && T.setAttribute("uv", new lt.Float32BufferAttribute(c(S.attributes.TEXCOORD_0), 2)), S.indices != null && T.setIndex(new lt.BufferAttribute(c(S.indices, !0), 1)), T.applyMatrix4(A), S.attributes.NORMAL == null && T.computeVertexNormals();
+                let w = new lt.Mesh(T, h[S.material != null ? S.material : 0] || h[0]);
+                w.castShadow = w.receiveShadow = !1, f.add(w), B && bp.push(w)
+            }
+        for (let S of m.children || []) v(S, A, B)
+    }
+    let g = s.scenes && s.scenes.length ? s.scenes[s.scene || 0].nodes || [] : (s.nodes || []).map((y, b) => b);
+    for (let y of g) v(y, d.clone(), !1);
+    let y = new lt.Box3().setFromObject(f),
+        b = y.getSize(new lt.Vector3),
+        m = y.getCenter(new lt.Vector3),
+        A = new lt.Matrix4;
+    b.x > b.z && A.makeRotationY(Math.PI / 2);
+    if (bp.length) {
+        let bq = new lt.Box3;
+        for (let w of bp) bq.expandByObject(w);
+        bq.getCenter(new lt.Vector3).applyMatrix4(A).z > 0 && A.multiply(new lt.Matrix4().makeRotationY(Math.PI))
+    }
+    let S = DGK.len / Math.max(b.x, b.y, b.z),
+        T = new lt.Matrix4().makeScale(S, S, S).multiply(A).multiply(new lt.Matrix4().makeTranslation(-m.x, -m.y, -m.z));
+    f.traverse(w => {
+        w.isMesh && w.geometry.applyMatrix4(T)
+    });
+    let w = new lt.Box3().setFromObject(f),
+        x = w.getSize(new lt.Vector3),
+        k = {
+            muzzle: [0, w.max.y * .55, w.min.z * .98],
+            eject: [w.max.x * .85, w.max.y * .35, 0],
+            names: p,
+            size: [x.x, x.y, x.z]
+        };
+    if (bp.length) {
+        let b2 = new lt.Box3;
+        for (let w2 of bp) b2.expandByObject(w2);
+        k.barrelZ = +b2.getCenter(new lt.Vector3).z.toFixed(3)
+    }
+    return window.__DG = k, {
+        root: f,
+        info: k
+    }
+}
+
+function dgAudio(i) {
+    let e = i.audio && i.audio.ctx;
+    if (!e || typeof Go != "object") return;
+    let t = {
+        pistol_shot: ["assets/audio/oga-22magnum.wav", "assets/audio/oga-22pistol.wav"],
+        pistol_dry: ["assets/audio/oga-reload-click.mp3"],
+        pistol_magout: ["assets/audio/gun_reload.1.ogg"],
+        pistol_magin: ["assets/audio/gun_reload.2.ogg"],
+        pistol_bolt: ["assets/audio/oga-reload-click.mp3"],
+        pistol_click: ["assets/audio/oga-reload-click.mp3"]
+    };
+    for (let n in t) ! function(s) {
+        let o = t[s],
+            r = [];
+        Promise.all(o.map(a => fetch(a).then(l => l.arrayBuffer()).then(l => e.decodeAudioData(l)))).then(a => {
+            for (let l of a) r.push(l.getChannelData(0).slice());
+            Go[s] = {
+                gen: (l, c, u) => r[u % r.length],
+                n: r.length,
+                sr: e.sampleRate,
+                peak: .97,
+                bus: "near",
+                max: 5,
+                pri: 9
+            }
+        }).catch(a => console.warn("[deagle] audio load failed: " + s, a))
+    }(n)
+}
+async function dgBuild(i) {
+    let e = new lt.Group;
+    e.name = "viewmodel-deagle";
+    let t = await dgGlb("assets/models/desert-eagle.glb");
+    e.add(t.root);
+    let n = t.info,
+        s = document.createElement("canvas");
+    s.width = s.height = 64;
+    let o = s.getContext("2d"),
+        r = o.createRadialGradient(32, 32, 2, 32, 32, 30);
+    r.addColorStop(0, "rgba(255,240,190,1)"), r.addColorStop(.35, "rgba(255,170,60,.75)"), r.addColorStop(1, "rgba(255,120,20,0)"), o.fillStyle = r, o.fillRect(0, 0, 64, 64);
+    let a = new lt.Mesh(new lt.PlaneGeometry(.22, .22), new lt.MeshBasicMaterial({
+        map: new lt.CanvasTexture(s),
+        blending: lt.AdditiveBlending,
+        depthWrite: !1,
+        transparent: !0
+    }));
+    a.position.set(n.muzzle[0], n.muzzle[1], n.muzzle[2]), a.renderOrder = 10, a.visible = !1, e.add(a), e.traverse(l => {
+        l.layers && l.layers.set(zc)
+    }), i.camera.add(e), e.visible = !1;
+    let l = {
+            t: 0,
+            cooldown: 0,
+            prevFire: !1,
+            dryDone: !1,
+            autoReload: -1,
+            reload: null,
+            burst: 0,
+            lastShot: -9,
+            bloom: 0,
+            heat: 0,
+            adsLin: 0,
+            adsE: 0,
+            sprintT: 0,
+            spreadS: .016,
+            reloadW: 0,
+            rackW: 0,
+            boltT: 9,
+            boltLocked: !1,
+            flashT: 0,
+            flashDur: .05,
+            flashS: .16,
+            bobAmt: 0,
+            bobPhase: 0,
+            wasGround: !0,
+            lastVy: 0,
+            kZ: pa(520, 30),
+            kP: pa(380, 26),
+            kY: pa(300, 22),
+            kR: pa(300, 20),
+            swY: pa(110, 15),
+            swP: pa(110, 15),
+            jY: pa(140, 13),
+            jP: pa(140, 13),
+            bump: pa(600, 30)
+        },
+        c = {
+            noFire: !1
+        },
+        u = new lt.Vector3,
+        h = new lt.Vector3,
+        f = new lt.Vector3,
+        p = new lt.Vector3,
+        d = new lt.Vector3,
+        v = new lt.Vector3;
+
+    function g() {
+        e.updateMatrix(), p.fromArray(n.muzzle).applyMatrix4(e.matrix);
+        let C = i.camera,
+            D = Math.tan(C.fov * Math.PI / 360) / Math.tan(i.viewCamera.fov * Math.PI / 360);
+        return p.x *= D, p.y *= D, p.applyQuaternion(C.quaternion).add(C.position)
+    }
+
+    function y(C = new lt.Vector3) {
+        return C.copy(g())
+    }
+
+    function b() {
+        if (l.reload || w.ammo >= w.magSize) return !1;
+        let C = w.ammo <= 0;
+        return l.reload = {
+            t: 0,
+            T: C ? DGK.reloadE : DGK.reloadT,
+            empty: C,
+            f: {}
+        }, l.autoReload = -1, i.events.emit("weapon:reload", {
+            phase: "start",
+            empty: C,
+            w: "deagle"
+        }), !0
+    }
+
+    function m() {
+        let C = i.player,
+            D = i.camera;
+        w.ammo--, l.burst++, l.lastShot = l.t, l.heat = Math.min(1.3, l.heat + .09);
+        let E = w.spread,
+            F = Math.random() * Math.PI * 2,
+            G = Math.tan(E) * Math.sqrt(Math.random());
+        u.set(Math.cos(F) * G, Math.sin(F) * G, -1).normalize().applyQuaternion(D.quaternion), h.copy(C.eye || D.position);
+        let H = null;
+        try {
+            H = i.combat.playerShot(h, u, {
+                damage: DGK.damage,
+                range: DGK.range
+            })
+        } catch {}
+        H && H.point ? f.copy(H.point) : f.copy(h).addScaledVector(u, DGK.range), g();
+        let I = i.fx;
+        I && (I.tracer && I.tracer(p, f), I.shell && (e.updateMatrix(), d.fromArray(n.eject).applyMatrix4(e.matrix), v.set(2 + Math.random() * 1.2, 1.2 + Math.random() * .8, .5 - Math.random() * .6).applyQuaternion(D.quaternion), C.vel && v.add(C.vel), I.shell(d, v))), i.render && i.render.lightPool && i.render.lightPool.flash(p, 16756832, 60, 8, .06), i.events.emit("weapon:fire", {
+            origin: h,
+            dir: u,
+            muzzle: p,
+            ads: l.adsE,
+            w: "deagle"
+        });
+        let J = dgLerp(1, .55, l.adsE) * (C.crouching ? .85 : 1);
+        C.addRecoil && C.addRecoil(.0155 * J * (.85 + Math.random() * .3), (Math.random() - .5) * .0032 * J), C.addShake && C.addShake(.2 * J), l.kZ.v += 2.6 * dgLerp(1, .6, l.adsE), l.kP.v += 2.8 * J, l.kY.v += (Math.random() - .5) * 1.4 * J, l.kR.v += (Math.random() - .5) * 2.6 * J, l.bloom = Math.min(1, l.bloom + .28), l.flashT = l.flashDur = .045 + Math.random() * .02, l.flashS = .16 + Math.random() * .07, l.boltT = 0, w.ammo <= 0 && (l.boltLocked = !0)
+    }
+
+    function A(C) {
+        let D = i.player,
+            E = i.input;
+        if (!D || !E || !D.alive) {
+            l.prevFire = !1, a.visible = !1;
+            return
+        }
+        l.t += C;
+        let F = !!E.fire && e.visible && !c.noFire,
+            G = F && !l.prevFire;
+        l.prevFire = F, F || (l.dryDone = !1);
+        let H = !!D.sprinting && !F && !E.ads && !l.reload;
+        l.sprintT = dgSmooth(l.sprintT, H ? 1 : 0, 9, C), E.pressed && E.pressed("reload") && b(), l.autoReload >= 0 && (l.autoReload -= C, l.autoReload < 0 && b());
+        let I = 0;
+        if (l.reload) {
+            let M = l.reload;
+            M.t += C;
+            let N = M.t,
+                O = (P, Q) => N >= Q && !M.f[P] ? (M.f[P] = 1, i.events.emit("weapon:reload", {
+                    phase: P,
+                    empty: M.empty,
+                    w: "deagle"
+                }), !0) : !1;
+            if (O("magout", DGK.magout) && (l.bump.v -= .25), O("magin", DGK.magin)) {
+                l.bump.v += .5, w.ammo = w.magSize;
+                let P = l;
+                M.empty || (P.boltLocked = !1)
+            }
+            O("tap", DGK.tap) && (l.bump.v += .35), M.empty && O("bolt", DGK.bolt) && (l.boltLocked = !1, l.bump.v += .3, l.kZ.v -= .5);
+            let R = Yo(N / .3),
+                S = 1 - Yo((N - (M.T - .5)) / .45);
+            l.reloadW = Math.min(R, S), l.rackW = M.empty ? Yo((N - 1.9) / .35) * S : 0, N >= M.T && (l.reload = null, l.reloadW = 0, l.rackW = 0, i.events.emit("weapon:reload", {
+                phase: "done",
+                w: "deagle"
+            }))
+        }
+        l.cooldown -= C;
+        let J = !l.reload && l.sprintT < .45;
+        if (F && G && J && l.cooldown <= 0)
+            if (w.ammo > 0) m(), l.cooldown = 60 / DGK.rpm;
+            else l.dryDone || (l.dryDone = !0, i.events.emit("weapon:dry", {
+                w: "deagle"
+            }), l.bump.v -= .08, l.autoReload = .32);
+        l.cooldown < 0 && (l.cooldown = Math.max(l.cooldown, -.001)), l.bloom = Math.max(0, l.bloom - C * 1.2);
+        let K = !!E.ads && !l.reload && l.sprintT < .35;
+        l.adsLin = dgClamp(l.adsLin + (K ? C : -C) / .16, 0, 1), l.adsE = Yo(l.adsLin), w.ads = l.adsE;
+        let L = D.speed || 0,
+            U = dgClamp(L / 6, 0, 1),
+            V = dgLerp(.016, .0012, l.adsE) + U * dgLerp(.013, .004, l.adsE) + l.bloom * dgLerp(.011, .003, l.adsE) + (D.onGround === !1 ? .022 : 0) - (D.crouching ? .002 * (1 - l.adsE) : 0);
+        l.spreadS = dgSmooth(l.spreadS, V, 18, C), w.spread = l.spreadS, w.state = l.reload ? "reloading" : l.sprintT > .5 ? "sprinting" : l.t - l.lastShot < .18 ? "firing" : "idle", l.flashT > 0 ? (l.flashT -= C, a.visible = !0, a.scale.setScalar(l.flashS * (.4 + .6 * Math.max(0, l.flashT / l.flashDur))), a.rotation.z = Math.random() * 6.28) : a.visible = !1;
+        let W = D.onGround !== !1,
+            X = D.vel ? D.vel.y : 0;
+        l.bobAmt = dgSmooth(l.bobAmt, W ? dgClamp(L / 3.6, 0, 1) : 0, 8, C), l.bobPhase += C * (L > .3 && W ? 5 + L * 1.5 : 0);
+        let Y = l.bobAmt * dgLerp(1, .12, l.adsE),
+            Z = Math.sin(l.bobPhase) * .006 * Y,
+            $ = (Math.sin(2 * l.bobPhase) * .0042 - Math.pow(.5 + .5 * Math.cos(2 * l.bobPhase + .6), 4) * .0048) * Y,
+            _ = dgLerp(1, .4, l.adsE);
+        if (l.swY.v += dgClamp(E.look ? E.look.dx : 0, -.2, .2) * 3 * _, l.swP.v += dgClamp(E.look ? E.look.dy : 0, -.2, .2) * 2.4 * _, ma(l.swY, 0, C), ma(l.swP, 0, C), l.swY.x = dgClamp(l.swY.x, -.09, .09), l.swP.x = dgClamp(l.swP.x, -.07, .07), l.wasGround && !W && X > 1 && (l.jY.v -= .2, l.jP.v += .6), !l.wasGround && W) {
+            let M = dgClamp(-l.lastVy * .05, 0, .6);
+            l.jY.v -= M, l.jP.v -= M * 3.2, l.kR.v += (Math.random() - .5) * M * 2
+        }
+        l.wasGround = W, W || (l.lastVy = X), ma(l.jY, 0, C), ma(l.jP, 0, C), ma(l.kZ, 0, C), ma(l.kP, 0, C), ma(l.kY, 0, C), ma(l.kR, 0, C), ma(l.bump, 0, C);
+        let ab = E.move ? E.move.x : 0,
+            bb = E.move ? E.move.y : 0,
+            cb = l.adsE,
+            db = l.sprintT,
+            eb = l.reloadW,
+            fb = l.rackW,
+            gb = dgLerp(DGK.hipP[0], DGK.adsP[0], cb) + DGK.reloadP[0] * eb + Z - l.swY.x * .06 - ab * .004 * (1 - cb),
+            hb = dgLerp(DGK.hipP[1], DGK.adsP[1], cb) + DGK.reloadP[1] * eb + $ + l.swP.x * .05 + l.jY.x + l.bump.x * .6,
+            ib = dgLerp(DGK.hipP[2], DGK.adsP[2], cb) + DGK.reloadP[2] * eb + l.kZ.x * .55 + bb * .004 * (1 - cb) * (1 - db),
+            jb = DGK.hipR[0] * (1 - cb) + DGK.adsR[0] * cb + DGK.reloadR[0] * eb - .16 * fb + l.swP.x + l.jP.x + l.kP.x + l.bump.x * 1.5,
+            kb = DGK.hipR[1] * (1 - cb) + DGK.adsR[1] * cb + DGK.reloadR[1] * eb + l.swY.x + l.kY.x,
+            lb = DGK.hipR[2] * (1 - cb) + DGK.adsR[2] * cb + DGK.reloadR[2] * eb + .62 * fb + l.swY.x * .7 - ab * .035 * (1 - cb) + l.kR.x;
+        e.position.set(gb, hb, ib), e.rotation.set(jb, kb, lb, "YXZ")
+    }
+
+    function _() {
+        w.ammo = DGK.mag, w.state = "idle", w.ads = 0, w.spread = .016, Object.assign(l, {
+            t: 0,
+            cooldown: 0,
+            prevFire: !1,
+            dryDone: !1,
+            autoReload: -1,
+            reload: null,
+            burst: 0,
+            lastShot: -9,
+            bloom: 0,
+            heat: 0,
+            adsLin: 0,
+            adsE: 0,
+            sprintT: 0,
+            reloadW: 0,
+            rackW: 0,
+            boltT: 9,
+            boltLocked: !1,
+            flashT: 0,
+            bobAmt: 0,
+            bobPhase: 0,
+            wasGround: !0,
+            lastVy: 0
+        });
+        for (let C of ["kZ", "kP", "kY", "kR", "swY", "swP", "jY", "jP", "bump"]) l[C].x = 0, l[C].v = 0;
+        a.visible = !1
+    }
+    let w = {
+        name: DGK.name,
+        kind: "deagle",
+        ammo: DGK.mag,
+        magSize: DGK.mag,
+        reserve: DGK.reserve,
+        state: "idle",
+        ads: 0,
+        spread: .016,
+        damage: DGK.damage,
+        rpm: DGK.rpm,
+        root: e,
+        debug: c,
+        update: A,
+        reset: _,
+        setVisible(C) {
+            e.visible = !!C
+        },
+        muzzleWorld: y,
+        reloadNow: b,
+        cancelReload() {
+            l.reload = null, l.reloadW = 0, l.rackW = 0
+        },
+        addAmmo() {},
+        setWetness() {},
+        snap() {
+            l.adsLin = i.input.ads ? 1 : 0;
+            for (let C of ["kZ", "kP", "kY", "kR", "swY", "swP", "jY", "jP", "bump"]) l[C].x = 0, l[C].v = 0;
+            l.sprintT = i.player.sprinting ? 1 : 0
+        }
+    };
+    return _(), w
+}
+async function dgn(i) {
+    let e = await dm(i);
+    e.kind = "pac9";
+    let t = null;
+    try {
+        t = await dgBuild(i)
+    } catch (n) {
+        console.error("[deagle] build failed", n)
+    }
+    dgAudio(i);
+    let n = 1,
+        s = !0,
+        o = 0,
+        r = () => n === 1 || !t ? e : t;
+
+    function a(l) {
+        !t || n === l || (n = l, e.cancelReload && e.cancelReload(), t.cancelReload && t.cancelReload(), e.setVisible(s && l === 1), t.setVisible(s && l === 2), e.debug.noFire = !0, t.debug.noFire = !0, o = .32, i.audio && i.audio.play && i.audio.play("pistol_click", {
+            gain: .5,
+            pitch: .92
+        }))
+    }
+    return {
+        get kind() {
+            return r().kind
+        },
+        get slot() {
+            return n
+        },
+        get name() {
+            return r().name
+        },
+        get ammo() {
+            return r().ammo
+        },
+        set ammo(l) {
+            r().ammo = l
+        },
+        get magSize() {
+            return r().magSize
+        },
+        set magSize(l) {
+            r().magSize = l
+        },
+        get reserve() {
+            return r().reserve
+        },
+        set reserve(l) {
+            r().reserve = l
+        },
+        get state() {
+            return r().state
+        },
+        set state(l) {
+            r().state = l
+        },
+        get ads() {
+            return r().ads
+        },
+        set ads(l) {
+            r().ads = l
+        },
+        get spread() {
+            return r().spread
+        },
+        set spread(l) {
+            r().spread = l
+        },
+        get damage() {
+            return r().damage
+        },
+        get rpm() {
+            return r().rpm
+        },
+        get root() {
+            return r().root
+        },
+        get debug() {
+            return r().debug
+        },
+        get info() {
+            return r().info
+        },
+        update(l) {
+            let c = i.input;
+            c && c.pressed && (t && c.pressed("weapon2") && n !== 2 ? a(2) : c.pressed("weapon1") && n !== 1 && a(1)), o > 0 && (o -= l, o <= 0 && (e.debug.noFire = !1, t && (t.debug.noFire = !1))), r().update(l)
+        },
+        reset() {
+            e.reset && e.reset(), t && t.reset && t.reset(), n = 1, o = 0, e.debug.noFire = !1, t && (t.debug.noFire = !1), e.setVisible(s), t && t.setVisible(!1)
+        },
+        setVisible(l) {
+            s = !!l, e.setVisible(s && (n === 1 || !t)), t && t.setVisible(s && n === 2)
+        },
+        muzzleWorld(l) {
+            return r().muzzleWorld(l)
+        },
+        reloadNow() {
+            return r().reloadNow()
+        },
+        cancelReload() {
+            e.cancelReload && e.cancelReload(), t && t.cancelReload && t.cancelReload()
+        },
+        addAmmo(l) {
+            r().addAmmo(l)
+        },
+        setWetness(l) {
+            e.setWetness && e.setWetness(l)
+        },
+        snap() {
+            r().snap && r().snap()
         }
     }
 }

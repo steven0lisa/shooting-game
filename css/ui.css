@@ -139,6 +139,9 @@ body { background: var(--ink); color: var(--bone); overflow: hidden; font-family
 .h-pips i.off { background: var(--bone-faint); box-shadow: none; }
 .h-ammo.low .h-pips i:not(.off) { background: var(--signal); }
 .h-wname { font: 600 11px/1 var(--f-label); letter-spacing: .28em; margin-right: -.28em; text-transform: uppercase; color: rgba(232, 228, 218, .82); }
+.h-slots { display: flex; justify-content: flex-end; gap: 10px; margin-top: 7px; }
+.h-slots b { font: 600 10px/1 var(--f-label); letter-spacing: .18em; margin-right: -.18em; text-transform: uppercase; color: var(--bone-faint); padding: 3px 6px; border: 1px solid transparent; }
+.h-slots b.on { color: var(--signal); border-color: rgba(255, 179, 71, .4); }
 
 /* world-space objective diamonds */
 .h-marks { position: absolute; inset: 0; transition: opacity .15s; } .h-marks.off { opacity: 0; }
@@ -174,6 +177,7 @@ body { background: var(--ink); color: var(--bone); overflow: hidden; font-family
 .t-reload { width: 54px; height: 54px; right: calc(108px + var(--sar)); bottom: calc(126px + var(--sab)); }
 .t-interact { width: 68px; height: 68px; right: calc(186px + var(--sar)); bottom: calc(96px + var(--sab)); border-color: var(--signal); color: var(--signal); display: none; }
 .t-interact.on { display: block; }
+.t-swap { width: 54px; height: 54px; right: calc(190px + var(--sar)); bottom: calc(26px + var(--sab)); }
 .t-pause { width: 42px; height: 42px; border-radius: 0; right: calc(12px + var(--sar)); top: calc(12px + var(--sat)); letter-spacing: .2em; }
 /* touch layout: keep the thumbs' corners clear */
 .is-touch .h-ammo { bottom: auto; top: calc(64px + var(--sat)); }
