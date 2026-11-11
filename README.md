@@ -13,6 +13,7 @@ python3 -m http.server 8931    # 任意静态服务器
 ```
 
 无需 npm install——three.js 已 vendored 在包内。启动约 10~20 s（全部资产程序化烘焙），boot 屏有进度。
+免构建直接玩：Releases 页下载 `shooting-game-<版本>-web.zip` 解压后同样用静态服务器打开（CI 随 tag 自动发布）。
 
 ## 这是个什么游戏
 

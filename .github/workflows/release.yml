@@ -1,0 +1,49 @@
+name: CI & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 敏感扫描要查完整提交历史
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 敏感信息门禁（构建前）
+        run: bash scripts/check-sensitive.sh
+
+      - name: 构建 dist
+        run: bash scripts/build.sh
+
+      - name: 产物校验
+        run: test -f dist/game.js && node --check dist/game.js
+
+      - name: 打包可玩 bundle
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p out
+          cp -r index.html css dist assets README.md ASSETS.md out/
+          (cd out && zip -qr "../shooting-game-${GITHUB_REF_NAME}-web.zip" .)
+          ls -la shooting-game-*.zip
+
+      - name: 创建 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: shooting-game-*.zip
+          generate_release_notes: true
+          body: |
+            可玩 Web 包：下载 `shooting-game-<版本>-web.zip` 解压后用任意静态服务器打开（如 `python3 -m http.server`），无需构建。
+            手机/桌面通用；游戏内按 1/2 切换主武器与沙漠之鹰。
