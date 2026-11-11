@@ -4589,7 +4589,9 @@ function u_(i, e, t) {
         })
     };
     ln("weapon:fire", he => {
-        I = I + 1 & 3, ze(he && he.w === "deagle" ? "pistol_shot" : "rifle_shot", {
+        I = I + 1 & 3;
+        let wn = he && he.w === "deagle" ? "pistol_shot" : he && he.w && Go[he.w + "_shot"] ? he.w + "_shot" : "rifle_shot";
+        ze(wn, {
             variant: I,
             gain: 1,
             jitter: .012
@@ -4612,6 +4614,16 @@ function u_(i, e, t) {
             }) : te.phase === "start" && ze("pistol_click", {
                 gain: .55,
                 pitch: .9
+            })
+        } else if (te && (te.w === "mp5" || te.w === "uzi") && Go[te.w + "_reload"]) {
+            te.phase === "magout" ? ze(te.w + "_reload", {
+                gain: .8,
+                pitch: 1.06
+            }) : te.phase === "magin" ? ze(te.w + "_reload", {
+                gain: .95
+            }) : te.phase === "bolt" && ze(te.w + "_reload", {
+                gain: .85,
+                pitch: 1.12
             })
         } else te.phase === "magout" ? ze("reload_magout") : te.phase === "magin" ? ze("reload_magin") : te.phase === "bolt" ? ze("reload_bolt") : te.phase === "start" && ze("jump", {
             gain: .5,
@@ -5138,11 +5150,12 @@ var h_ = {
         ControlRight: "crouch",
         KeyR: "reload",
         KeyE: "interact",
-        KeyF: "melee",
+        KeyF: "pickup",
+        KeyG: "drop",
         KeyV: "melee",
         Escape: "pause",
         KeyP: "pause",
-        KeyQ: "alt",
+        KeyQ: "lastWeapon",
         Digit1: "weapon1",
         Digit2: "weapon2",
         Enter: "fire",
@@ -5347,7 +5360,7 @@ function v_(i) {
 
     function N() {
         let P = document.createElement("div");
-        P.className = "touch", P.innerHTML = '<div class="t-stick"><i class="t-ring"></i><i class="t-nub"></i></div><button class="t-btn t-fire" data-a="fire" aria-label="开火"><span>开火</span></button><button class="t-btn t-ads" data-a="ads" aria-label="瞄准"><span>瞄准</span></button><button class="t-btn t-reload" data-a="reload" aria-label="换弹"><span>换弹</span></button><button class="t-btn t-jump" data-a="jump" aria-label="跳跃"><span>跳跃</span></button><button class="t-btn t-interact" data-a="interact" aria-label="Interact"><span>交互</span></button><button class="t-btn t-swap" data-a="weapon2" aria-label="切枪"><span>切枪</span></button><button class="t-btn t-pause" data-a="pause" aria-label="暂停"><span>暂停</span></button>', t.appendChild(P);
+        P.className = "touch", P.innerHTML = '<div class="t-stick"><i class="t-ring"></i><i class="t-nub"></i></div><button class="t-btn t-fire" data-a="fire" aria-label="开火"><span>开火</span></button><button class="t-btn t-ads" data-a="ads" aria-label="瞄准"><span>瞄准</span></button><button class="t-btn t-reload" data-a="reload" aria-label="换弹"><span>换弹</span></button><button class="t-btn t-jump" data-a="jump" aria-label="跳跃"><span>跳跃</span></button><button class="t-btn t-interact" data-a="interact" aria-label="Interact"><span>交互</span></button><button class="t-btn t-swap" data-a="weapon2" aria-label="切枪"><span>切枪</span></button><button class="t-btn t-pickup" data-a="pickup" aria-label="捡起"><span>捡起</span></button><button class="t-btn t-drop" data-a="drop" aria-label="丢弃"><span>丢弃</span></button><button class="t-btn t-pause" data-a="pause" aria-label="暂停"><span>暂停</span></button>', t.appendChild(P);
         let V = L => P.querySelector(L),
             Y = {
                 root: P,
@@ -5360,6 +5373,8 @@ function v_(i) {
                     jump: V(".t-jump"),
                     interact: V(".t-interact"),
                     weapon2: V(".t-swap"),
+                    pickup: V(".t-pickup"),
+                    drop: V(".t-drop"),
                     pause: V(".t-pause")
                 }
             };
@@ -5777,7 +5792,7 @@ function x_(i) {
             Y = B * Mt.shakeYaw * (Math.sin(P * 37.3 + 2.1) + .6 * Math.sin(P * 83.9)),
             L = B * Mt.shakeRoll * (Math.sin(P * 29.7 + .7) + .5 * Math.sin(P * 61.3 + 4));
         if (e.position.copy(C.eye), e.rotation.set(me + V + re + g.x * .12, ee + Y, v + L + ne + p * .35, "YXZ"), !i.params || !i.params.fov) {
-            let Z = bi(C.baseFov + (C.sprinting ? Mt.fovSprint : 0), Mt.fovAds, C.ads);
+            let Z = bi(C.baseFov + (C.sprinting ? Mt.fovSprint : 0), i.weapon && i.weapon.adsFov > 0 ? i.weapon.adsFov : Mt.fovAds, C.ads);
             H = F > 0 ? kn(H, Z, C.ads > .02 && C.ads < .98 ? 30 : 7, F) : Z, Math.abs(e.fov - H) > .01 && (e.fov = H, e.updateProjectionMatrix())
         }
     }

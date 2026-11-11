@@ -1978,7 +1978,7 @@ async function dm(i) {
             kind: "pac9",
             ammo: Gv,
             magSize: Gv,
-            reserve: B_,
+            reserve: -1,
             state: "idle",
             ads: 0,
             spread: .0125,
@@ -2001,7 +2001,7 @@ async function dm(i) {
                 k.reload = null, k.reloadW = 0, k.rackW = 0
             },
             addAmmo(Me) {
-                ve.reserve += Me
+                ve.reserve >= 0 && (ve.reserve += Me)
             },
             setWetness(Me) {
                 Wv.value = Math.max(0, Math.min(1, +Me || 0))
@@ -2014,7 +2014,7 @@ async function dm(i) {
         };
 
     function _e() {
-        ve.ammo = Gv, ve.reserve = B_, ve.state = "idle", ve.ads = 0, Object.assign(k, {
+        ve.ammo = Gv, ve.reserve = -1, ve.state = "idle", ve.ads = 0, Object.assign(k, {
             cooldown: 0,
             prevFire: !1,
             dryDone: !1,
@@ -2052,7 +2052,7 @@ async function dm(i) {
     }
 
     function Fe() {
-        if (k.reload || ve.ammo >= ve.magSize || ve.reserve <= 0) return !1;
+        if (k.reload || ve.ammo >= ve.magSize || ve.reserve === 0) return !1;
         let Me = ve.ammo <= 0;
         return k.reload = {
             t: 0,
@@ -2137,8 +2137,8 @@ async function dm(i) {
                 }), !0) : !1;
             if (Vt("magout", me) && (k.bump.v -= .25), Pt > .86 && !Je.f.fresh && (Je.f.fresh = 1, d.visible = !0), Vt("magin", ee)) {
                 k.bump.v += .55;
-                let Tt = Math.min(ve.magSize - ve.ammo, ve.reserve);
-                ve.ammo += Tt, ve.reserve -= Tt, Je.empty || (k.boltLocked = !1)
+                let Tt = ve.reserve < 0 ? ve.magSize - ve.ammo : Math.min(ve.magSize - ve.ammo, ve.reserve);
+                ve.ammo += Tt, ve.reserve >= 0 && (ve.reserve -= Tt), Je.empty || (k.boltLocked = !1)
             }
             Pt >= 1.5 && !Je.f.tap && (Je.f.tap = 1, k.bump.v += .4), Je.empty && (Pt >= B && (nn = Pt < P ? Yo((Pt - B) / (P - B)) : Pt < V ? 1 : Math.max(0, 1 - (Pt - V) / .035)), Vt("bolt", V) && (k.boltLocked = !1, k.bump.v += .3, k.kZ.v -= .5)), le(Je.empty ? ue : $, Pt), q.position.copy(Y), q.quaternion.copy(L), Pt >= me && Pt < ee ? (Z.copy(L).multiply(R), f.quaternion.copy(Z), f.position.copy(p).sub(j.p).applyQuaternion(Z).add(Y)) : (f.quaternion.identity(), f.position.copy(p));
             let ss = Yo(Pt / .3),
@@ -2156,7 +2156,7 @@ async function dm(i) {
                 for (; k.cooldown <= 0 && ve.ammo > 0 && Je < 3;) Be(), k.cooldown += 60 / O_, Je++
             } else k.dryDone || (k.dryDone = !0, i.events.emit("weapon:dry", {
                 w: "pac9"
-            }), k.bump.v -= .08, ve.reserve > 0 && (k.autoReload = .32));
+            }), k.bump.v -= .08, ve.reserve !== 0 && (k.autoReload = .32));
         k.cooldown < 0 && (k.cooldown = Math.max(k.cooldown, -.001)), k.t - k.lastShot > .24 && (k.burst > 0 && (k.recPhase = ae() * 6.28), k.burst = 0), k.bloom = Math.max(0, k.bloom - Me * 1.5), k.t - k.lastShot > .11 && k.t - k.lastShot < .11 + Me * 1.5 && k.heat > .4 && (k.smoke = Math.min(1.6, k.heat * 1.3)), k.smoke > 0 && (k.smoke -= Me, k.smokeTick -= Me, k.smokeTick <= 0 && i.fx && i.fx.smoke && (k.smokeTick = .085, Re(We), i.fx.smoke(We, {
             size: .1 + k.smoke * .06,
             life: 1.3,
@@ -2290,43 +2290,181 @@ async function PC(i) {
         }
     }
 }
-/* ============================================================ 武器 2：沙漠之鹰（DGK / dgn / dgBuild）
-   外部素材：assets/models/desert-eagle.glb（poly.pizza "Rigged Desert Eagle" by PuKkBuMXDD，CC-BY 3.0）
-   音效 assets/audio/*（OpenGameArt CC0）——署名清单见 ASSETS.md
-   设计：7 发弹匣、无限备弹（reserve=-1，HUD 显 ∞）、半自动 210 RPM 上限、
-   伤害 55 / 射程 120（.50 AE 重弹：近距停下力大、远距存速差）、后坐与 bloom 显著高于步枪 */
-var DGK = {
-        name: "沙漠之鹰",
-        kind: "deagle",
-        mag: 7,
-        reserve: -1,
-        rpm: 210,
-        damage: 55,
-        range: 120,
-        reloadT: 2.15,
-        reloadE: 2.85,
-        magout: .55,
-        magin: 1.45,
-        tap: 1.62,
-        bolt: 2.45,
-        hipP: [.135, -.158, -.3],
-        hipR: [.03, .06, -.02],
-        adsP: [0, -.104, -.2],
-        adsR: [0, 0, 0],
-        reloadP: [0, -.09, .05],
-        reloadR: [-.55, .12, -.18],
-        len: .3
+/* ============================================================ 武器系统 v2 —— 类型注册表 DGTypes（契约 notes/weapons-v2-spec.md §1）
+   五种武器：pac9（dm 程序化）/ deagle / awp / mp5 / uzi（后四者 dgGlb 加载）
+   字段：名称/弹匣/备弹(-1=∞)/RPM/扛法(hold:auto|semi|bolt)/伤害/射程/adsFov/
+         换弹(战术/空仓)/散布 bloom 与恢复/基础-开镜散布/后坐系数/每发热量/
+         位姿表(hip/ads/reload × P/R)/scaleLen/模型路径/音效名
+   注：换弹相位(magout/magin/tap/bolt)按 deagle 现值对总时长的比例在 dgBuild 内推导
+       （.256/.674/.753 × reloadT、.86 × reloadE，还原 deagle .55/1.45/1.62/2.45）；
+       散布/后坐未列出的类型项为按 spec §1 基线拟合的估计值（见报告"与 spec 出入"）。 */
+var DGTypes = {
+        pac9: {
+            kind: "pac9",
+            name: "几猫九式突击步枪",
+            mag: 30,
+            reserve: -1,
+            rpm: 720,
+            hold: "auto",
+            damage: 26,
+            range: 300,
+            adsFov: 52,
+            reloadT: 2.1,
+            reloadE: 2.72,
+            bloom: .17,
+            bloomDecay: 1.5,
+            base: .0125,
+            adsB: .0012,
+            rc: 1,
+            heat: .05,
+            hipP: eu.p,
+            hipR: eu.r,
+            adsP: qv.p,
+            adsR: qv.r,
+            reloadP: tu.p,
+            reloadR: tu.r,
+            scaleLen: 0,
+            model: null,
+            sfx: {
+                shot: "rifle_shot"
+            }
+        },
+        deagle: {
+            kind: "deagle",
+            name: "沙漠之鹰",
+            mag: 7,
+            reserve: -1,
+            rpm: 210,
+            hold: "semi",
+            damage: 55,
+            range: 120,
+            adsFov: 52,
+            reloadT: 2.15,
+            reloadE: 2.85,
+            bloom: .28,
+            bloomDecay: 1.2,
+            base: .016,
+            adsB: .0012,
+            rc: 1,
+            heat: .09,
+            hipP: [.135, -.158, -.3],
+            hipR: [.03, .06, -.02],
+            adsP: [0, -.104, -.2],
+            adsR: [0, 0, 0],
+            reloadP: [0, -.09, .05],
+            reloadR: [-.55, .12, -.18],
+            scaleLen: .3,
+            model: "assets/models/desert-eagle.glb",
+            sfx: {
+                shot: "pistol_shot",
+                dry: "pistol_dry"
+            }
+        },
+        awp: {
+            kind: "awp",
+            name: "AWP 狙击步枪",
+            mag: 10,
+            reserve: -1,
+            rpm: 45,
+            hold: "bolt",
+            damage: 110,
+            range: 600,
+            adsFov: 18,
+            reloadT: 2.6,
+            reloadE: 3.2,
+            bloom: .34,
+            bloomDecay: 2.6,
+            base: .0005,
+            adsB: .0001,
+            rc: 1.5,
+            heat: .12,
+            hipP: [.14, -.16, -.4],
+            hipR: [.03, .07, -.02],
+            adsP: [0, -.115, -.32],
+            adsR: [0, 0, 0],
+            reloadP: [0, -.09, .06],
+            reloadR: [-.5, .1, -.15],
+            scaleLen: .55,
+            model: "assets/models/awp.glb",
+            sfx: {
+                shot: "awp_shot",
+                bolt: "awp_bolt"
+            }
+        },
+        mp5: {
+            kind: "mp5",
+            name: "MP5 冲锋枪",
+            mag: 30,
+            reserve: -1,
+            rpm: 800,
+            hold: "auto",
+            damage: 22,
+            range: 180,
+            adsFov: 52,
+            reloadT: 2,
+            reloadE: 2.5,
+            bloom: .12,
+            bloomDecay: 1.6,
+            base: .014,
+            adsB: .0015,
+            rc: .6,
+            heat: .05,
+            hipP: [.13, -.15, -.3],
+            hipR: [.03, .06, -.02],
+            adsP: [0, -.104, -.24],
+            adsR: [0, 0, 0],
+            reloadP: [0, -.09, .05],
+            reloadR: [-.55, .12, -.18],
+            scaleLen: .36,
+            model: "assets/models/mp5.glb",
+            sfx: {
+                shot: "mp5_shot",
+                reload: "mp5_reload"
+            }
+        },
+        uzi: {
+            kind: "uzi",
+            name: "Uzi 冲锋枪",
+            mag: 25,
+            reserve: -1,
+            rpm: 950,
+            hold: "auto",
+            damage: 17,
+            range: 120,
+            adsFov: 52,
+            reloadT: 1.9,
+            reloadE: 2.4,
+            bloom: .2,
+            bloomDecay: 1.4,
+            base: .022,
+            adsB: .004,
+            rc: .5,
+            heat: .04,
+            hipP: [.12, -.15, -.26],
+            hipR: [.03, .06, -.02],
+            adsP: [0, -.1, -.2],
+            adsR: [0, 0, 0],
+            reloadP: [0, -.09, .05],
+            reloadR: [-.55, .12, -.18],
+            scaleLen: .22,
+            model: "assets/models/uzi.glb",
+            sfx: {
+                shot: "uzi_shot",
+                reload: "uzi_reload"
+            }
+        }
     },
     dgLerp = (i, e, t) => i + (e - i) * t,
-    dgClamp = (i, e, t) => i < e ? e : i > t ? t : i;
+    dgClamp = (i, e, t) => i < e ? e : i > t ? t : i,
+    dgModels = {};
 
 function dgSmooth(i, e, t, n) {
     return i + (e - i) * (1 - Math.exp(-t * n))
 }
-async function dgGlb(i) {
+async function dgGlb(i, dgLen = .3) {
     let e = await (await fetch(i)).arrayBuffer(),
         t = new DataView(e);
-    if (t.getUint32(0, !0) !== 0x46546c67) throw new Error("[deagle] not a glb file");
+    if (t.getUint32(0, !0) !== 0x46546c67) throw new Error("[dg] not a glb file: " + i);
     let n = 12,
         s = null,
         o = null;
@@ -2455,7 +2593,7 @@ async function dgGlb(i) {
         for (let w of bp) bq.expandByObject(w);
         bq.getCenter(new lt.Vector3).applyMatrix4(A).z > 0 && A.multiply(new lt.Matrix4().makeRotationY(Math.PI))
     }
-    let S = DGK.len / Math.max(b.x, b.y, b.z),
+    let S = dgLen / Math.max(b.x, b.y, b.z),
         T = new lt.Matrix4().makeScale(S, S, S).multiply(A).multiply(new lt.Matrix4().makeTranslation(-m.x, -m.y, -m.z));
     f.traverse(w => {
         w.isMesh && w.geometry.applyMatrix4(T)
@@ -2473,7 +2611,7 @@ async function dgGlb(i) {
         for (let w2 of bp) b2.expandByObject(w2);
         k.barrelZ = +b2.getCenter(new lt.Vector3).z.toFixed(3)
     }
-    return window.__DG = k, {
+    return {
         root: f,
         info: k
     }
@@ -2504,13 +2642,101 @@ function dgAudio(i) {
                 max: 5,
                 pri: 9
             }
-        }).catch(a => console.warn("[deagle] audio load failed: " + s, a))
-    }(n)
+        }).catch(a => console.warn("[dg] audio load failed: " + s, a))
+    }(n);
+    /* 武器 v2 外置音效（spec §6）：扩展名容错依次试 wav/mp3/ogg；
+       全部失败 → 静默降级为合成音（不抛错、不刷屏），页面内已注册即可被 i.audio.play 命中 */
+    let u = {
+        awp_shot: "shot",
+        awp_bolt: "click",
+        mp5_shot: "shot",
+        mp5_reload: "reload",
+        uzi_shot: "shot",
+        uzi_reload: "reload"
+    };
+    for (let n in u) ! function(s, g) {
+        let o = [".wav", ".mp3", ".ogg"].map(a => "assets/audio/" + s + a);
+        (async () => {
+            for (let p of o) try {
+                let l = await fetch(p);
+                if (!l.ok) continue;
+                let c = await e.decodeAudioData(await l.arrayBuffer()),
+                    d = [c.getChannelData(0).slice()];
+                Go[s] = {
+                    gen: (a, b, h) => d[h % d.length],
+                    n: d.length,
+                    sr: e.sampleRate,
+                    peak: .97,
+                    bus: "near",
+                    max: 5,
+                    pri: 9
+                };
+                return
+            } catch (a) {}
+            Go[s] = {
+                gen: a => dgSynth(a, g),
+                n: 1,
+                sr: e.sampleRate,
+                peak: .97,
+                bus: "near",
+                max: 5,
+                pri: 9
+            }
+        })()
+    }(n, u[n])
 }
-async function dgBuild(i) {
+
+function dgSynth(i, e) {
+    let t = Math.max(16, (e === "shot" ? .18 : .07) * i | 0),
+        n = new Float32Array(t);
+    for (let s = 0; s < t; s++) {
+        let o = s / t,
+            r = Math.pow(1 - o, e === "shot" ? 3 : 6);
+        n[s] = (Math.random() * 2 - 1) * r, e === "shot" && (n[s] += Math.sin(s / i * 596.9) * Math.pow(1 - o, 4) * .5)
+    }
+    return n
+}
+
+/* 模型缺失/损坏时的占位回退（spec §5.4）：细长盒体拼枪形，枪口朝 -z，info 形状与 dgGlb 一致 */
+function dgPlaceholder(i) {
+    let e = i.scaleLen || .3,
+        t = new lt.Group;
+    t.name = "viewmodel-" + i.kind + "-placeholder";
+    let n = new lt.MeshStandardMaterial({
+            color: 2896440,
+            metalness: .8,
+            roughness: .45
+        }),
+        s = (o, r, a, l, c, u) => {
+            let h = new lt.Mesh(new lt.BoxGeometry(o, r, a), n);
+            h.position.set(l, c, u), h.castShadow = h.receiveShadow = !1, t.add(h)
+        };
+    return s(e * .5, e * .16, e * .14, 0, 0, 0), s(e * .06, e * .06, e * .5, 0, e * .02, -e * .4), s(e * .09, e * .2, e * .1, 0, -e * .16, e * .1), s(e * .08, e * .2, e * .12, 0, -e * .16, -e * .02), s(e * .1, e * .1, e * .2, 0, 0, e * .3), {
+        root: t,
+        info: {
+            muzzle: [0, e * .03, -e * .66],
+            eject: [e * .1, e * .04, e * .05],
+            names: ["placeholder:" + i.kind],
+            size: [e * .5, e * .4, e * 1.1]
+        }
+    }
+}
+
+/* 泛化视模工厂（spec §1/§5.3）：按 DGTypes[kind] 构建——deagle 与原实现数值逐一等价（手感保持），
+   awp/mp5/uzi 走 dgGlb 加载（失败回退占位）；扛法 auto 连发循环 / semi·bolt 边沿 + 冷却，
+   bolt（awp）在 emit 后延时播 sfx.bolt（60/45≈1.33s 冷却由 rpm 天然给出） */
+async function dgBuild(i, kind) {
+    let T = DGTypes[kind];
+    if (!T) throw new Error("[dg] unknown kind: " + kind);
     let e = new lt.Group;
-    e.name = "viewmodel-deagle";
-    let t = await dgGlb("assets/models/desert-eagle.glb");
+    e.name = "viewmodel-" + kind;
+    let t = null;
+    if (T.model) try {
+        t = await dgGlb(T.model, T.scaleLen || .3)
+    } catch (n) {
+        console.warn("[dg] glb load failed (" + T.model + "), placeholder fallback:", n)
+    }
+    t || (t = dgPlaceholder(T));
     e.add(t.root);
     let n = t.info,
         s = document.createElement("canvas");
@@ -2518,16 +2744,24 @@ async function dgBuild(i) {
     let o = s.getContext("2d"),
         r = o.createRadialGradient(32, 32, 2, 32, 32, 30);
     r.addColorStop(0, "rgba(255,240,190,1)"), r.addColorStop(.35, "rgba(255,170,60,.75)"), r.addColorStop(1, "rgba(255,120,20,0)"), o.fillStyle = r, o.fillRect(0, 0, 64, 64);
-    let a = new lt.Mesh(new lt.PlaneGeometry(.22, .22), new lt.MeshBasicMaterial({
-        map: new lt.CanvasTexture(s),
-        blending: lt.AdditiveBlending,
-        depthWrite: !1,
-        transparent: !0
-    }));
-    a.position.set(n.muzzle[0], n.muzzle[1], n.muzzle[2]), a.renderOrder = 10, a.visible = !1, e.add(a), e.traverse(l => {
+    let fz = (T.scaleLen || .3) / .3,
+        a = new lt.Mesh(new lt.PlaneGeometry(.22 * fz, .22 * fz), new lt.MeshBasicMaterial({
+            map: new lt.CanvasTexture(s),
+            blending: lt.AdditiveBlending,
+            depthWrite: !1,
+            transparent: !0
+        }));
+    a.name = "dg-flash", a.position.set(n.muzzle[0], n.muzzle[1], n.muzzle[2]), a.renderOrder = 10, a.visible = !1, e.add(a), e.traverse(l => {
         l.layers && l.layers.set(zc)
-    }), i.camera.add(e), e.visible = !1;
-    let l = {
+    }), i.camera.add(e), e.visible = !1, dgModels[kind] = n;
+    /* 换弹相位按 deagle 实测比例从总时长推导（.2558/.6744/.7535×reloadT、.8596×reloadE ≈ .55/1.45/1.62/2.45） */
+    let PH = {
+            mgO: .2558 * T.reloadT,
+            mgI: .6744 * T.reloadT,
+            tp: .7535 * T.reloadT,
+            bk: .8596 * T.reloadE
+        },
+        l = {
             t: 0,
             cooldown: 0,
             prevFire: !1,
@@ -2541,14 +2775,14 @@ async function dgBuild(i) {
             adsLin: 0,
             adsE: 0,
             sprintT: 0,
-            spreadS: .016,
+            spreadS: T.base,
             reloadW: 0,
             rackW: 0,
             boltT: 9,
             boltLocked: !1,
             flashT: 0,
             flashDur: .05,
-            flashS: .16,
+            flashS: .16 * fz,
             bobAmt: 0,
             bobPhase: 0,
             wasGround: !0,
@@ -2589,20 +2823,26 @@ async function dgBuild(i) {
         let C = w.ammo <= 0;
         return l.reload = {
             t: 0,
-            T: C ? DGK.reloadE : DGK.reloadT,
+            T: C ? T.reloadE : T.reloadT,
             empty: C,
             f: {}
         }, l.autoReload = -1, i.events.emit("weapon:reload", {
             phase: "start",
             empty: C,
-            w: "deagle"
+            w: kind
         }), !0
+    }
+
+    function dy() {
+        l.dryDone || (l.dryDone = !0, i.events.emit("weapon:dry", {
+            w: kind
+        }), l.bump.v -= .08, l.autoReload = .32)
     }
 
     function m() {
         let C = i.player,
             D = i.camera;
-        w.ammo--, l.burst++, l.lastShot = l.t, l.heat = Math.min(1.3, l.heat + .09);
+        w.ammo--, l.burst++, l.lastShot = l.t, l.heat = Math.min(1.3, l.heat + T.heat);
         let E = w.spread,
             F = Math.random() * Math.PI * 2,
             G = Math.tan(E) * Math.sqrt(Math.random());
@@ -2610,21 +2850,21 @@ async function dgBuild(i) {
         let H = null;
         try {
             H = i.combat.playerShot(h, u, {
-                damage: DGK.damage,
-                range: DGK.range
+                damage: T.damage,
+                range: T.range
             })
         } catch {}
-        H && H.point ? f.copy(H.point) : f.copy(h).addScaledVector(u, DGK.range), g();
+        H && H.point ? f.copy(H.point) : f.copy(h).addScaledVector(u, T.range), g();
         let I = i.fx;
         I && (I.tracer && I.tracer(p, f), I.shell && (e.updateMatrix(), d.fromArray(n.eject).applyMatrix4(e.matrix), v.set(2 + Math.random() * 1.2, 1.2 + Math.random() * .8, .5 - Math.random() * .6).applyQuaternion(D.quaternion), C.vel && v.add(C.vel), I.shell(d, v))), i.render && i.render.lightPool && i.render.lightPool.flash(p, 16756832, 60, 8, .06), i.events.emit("weapon:fire", {
             origin: h,
             dir: u,
             muzzle: p,
             ads: l.adsE,
-            w: "deagle"
+            w: kind
         });
         let J = dgLerp(1, .55, l.adsE) * (C.crouching ? .85 : 1);
-        C.addRecoil && C.addRecoil(.0155 * J * (.85 + Math.random() * .3), (Math.random() - .5) * .0032 * J), C.addShake && C.addShake(.2 * J), l.kZ.v += 2.6 * dgLerp(1, .6, l.adsE), l.kP.v += 2.8 * J, l.kY.v += (Math.random() - .5) * 1.4 * J, l.kR.v += (Math.random() - .5) * 2.6 * J, l.bloom = Math.min(1, l.bloom + .28), l.flashT = l.flashDur = .045 + Math.random() * .02, l.flashS = .16 + Math.random() * .07, l.boltT = 0, w.ammo <= 0 && (l.boltLocked = !0)
+        C.addRecoil && C.addRecoil(.0155 * T.rc * J * (.85 + Math.random() * .3), (Math.random() - .5) * .0032 * T.rc * J), C.addShake && C.addShake(.2 * T.rc * J), l.kZ.v += 2.6 * T.rc * dgLerp(1, .6, l.adsE), l.kP.v += 2.8 * T.rc * J, l.kY.v += (Math.random() - .5) * 1.4 * T.rc * J, l.kR.v += (Math.random() - .5) * 2.6 * T.rc * J, l.bloom = Math.min(1, l.bloom + T.bloom), l.flashT = l.flashDur = .045 + Math.random() * .02, l.flashS = (.16 + Math.random() * .07) * fz, l.boltT = 0, w.ammo <= 0 && (l.boltLocked = !0)
     }
 
     function A(C) {
@@ -2640,7 +2880,6 @@ async function dgBuild(i) {
         l.prevFire = F, F || (l.dryDone = !1);
         let H = !!D.sprinting && !F && !E.ads && !l.reload;
         l.sprintT = dgSmooth(l.sprintT, H ? 1 : 0, 9, C), E.pressed && E.pressed("reload") && b(), l.autoReload >= 0 && (l.autoReload -= C, l.autoReload < 0 && b());
-        let I = 0;
         if (l.reload) {
             let M = l.reload;
             M.t += C;
@@ -2648,34 +2887,45 @@ async function dgBuild(i) {
                 O = (P, Q) => N >= Q && !M.f[P] ? (M.f[P] = 1, i.events.emit("weapon:reload", {
                     phase: P,
                     empty: M.empty,
-                    w: "deagle"
+                    w: kind
                 }), !0) : !1;
-            if (O("magout", DGK.magout) && (l.bump.v -= .25), O("magin", DGK.magin)) {
+            if (O("magout", PH.mgO) && (l.bump.v -= .25), O("magin", PH.mgI)) {
                 l.bump.v += .5, w.ammo = w.magSize;
                 let P = l;
                 M.empty || (P.boltLocked = !1)
             }
-            O("tap", DGK.tap) && (l.bump.v += .35), M.empty && O("bolt", DGK.bolt) && (l.boltLocked = !1, l.bump.v += .3, l.kZ.v -= .5);
+            O("tap", PH.tp) && (l.bump.v += .35), M.empty && O("bolt", PH.bk) && (l.boltLocked = !1, l.bump.v += .3, l.kZ.v -= .5);
             let R = Yo(N / .3),
                 S = 1 - Yo((N - (M.T - .5)) / .45);
-            l.reloadW = Math.min(R, S), l.rackW = M.empty ? Yo((N - 1.9) / .35) * S : 0, N >= M.T && (l.reload = null, l.reloadW = 0, l.rackW = 0, i.events.emit("weapon:reload", {
+            l.reloadW = Math.min(R, S), l.rackW = M.empty ? Yo((N - (PH.bk - .55)) / .35) * S : 0, N >= M.T && (l.reload = null, l.reloadW = 0, l.rackW = 0, i.events.emit("weapon:reload", {
                 phase: "done",
-                w: "deagle"
+                w: kind
             }))
         }
         l.cooldown -= C;
         let J = !l.reload && l.sprintT < .45;
-        if (F && G && J && l.cooldown <= 0)
-            if (w.ammo > 0) m(), l.cooldown = 60 / DGK.rpm;
-            else l.dryDone || (l.dryDone = !0, i.events.emit("weapon:dry", {
-                w: "deagle"
-            }), l.bump.v -= .08, l.autoReload = .32);
-        l.cooldown < 0 && (l.cooldown = Math.max(l.cooldown, -.001)), l.bloom = Math.max(0, l.bloom - C * 1.2);
+        if (F && J) {
+            if (T.hold === "auto") {
+                if (w.ammo > 0) {
+                    let M = 0;
+                    for (; l.cooldown <= 0 && w.ammo > 0 && M < 3;) m(), l.cooldown += 60 / T.rpm, M++
+                } else dy()
+            } else if (G && l.cooldown <= 0) {
+                if (w.ammo > 0) {
+                    if (m(), l.cooldown = 60 / T.rpm, T.hold === "bolt" && T.sfx && T.sfx.bolt && i.audio && i.audio.play) i.audio.play(T.sfx.bolt, {
+                        gain: .85,
+                        delay: .35,
+                        jitter: .06
+                    })
+                } else dy()
+            }
+        }
+        l.cooldown < 0 && (l.cooldown = Math.max(l.cooldown, -.001)), l.bloom = Math.max(0, l.bloom - C * T.bloomDecay);
         let K = !!E.ads && !l.reload && l.sprintT < .35;
         l.adsLin = dgClamp(l.adsLin + (K ? C : -C) / .16, 0, 1), l.adsE = Yo(l.adsLin), w.ads = l.adsE;
         let L = D.speed || 0,
             U = dgClamp(L / 6, 0, 1),
-            V = dgLerp(.016, .0012, l.adsE) + U * dgLerp(.013, .004, l.adsE) + l.bloom * dgLerp(.011, .003, l.adsE) + (D.onGround === !1 ? .022 : 0) - (D.crouching ? .002 * (1 - l.adsE) : 0);
+            V = dgLerp(T.base, T.adsB, l.adsE) + U * dgLerp(.013, .004, l.adsE) + l.bloom * dgLerp(.011, .003, l.adsE) + (D.onGround === !1 ? .022 : 0) - (D.crouching ? .002 * (1 - l.adsE) : 0);
         l.spreadS = dgSmooth(l.spreadS, V, 18, C), w.spread = l.spreadS, w.state = l.reload ? "reloading" : l.sprintT > .5 ? "sprinting" : l.t - l.lastShot < .18 ? "firing" : "idle", l.flashT > 0 ? (l.flashT -= C, a.visible = !0, a.scale.setScalar(l.flashS * (.4 + .6 * Math.max(0, l.flashT / l.flashDur))), a.rotation.z = Math.random() * 6.28) : a.visible = !1;
         let W = D.onGround !== !1,
             X = D.vel ? D.vel.y : 0;
@@ -2695,17 +2945,17 @@ async function dgBuild(i) {
             db = l.sprintT,
             eb = l.reloadW,
             fb = l.rackW,
-            gb = dgLerp(DGK.hipP[0], DGK.adsP[0], cb) + DGK.reloadP[0] * eb + Z - l.swY.x * .06 - ab * .004 * (1 - cb),
-            hb = dgLerp(DGK.hipP[1], DGK.adsP[1], cb) + DGK.reloadP[1] * eb + $ + l.swP.x * .05 + l.jY.x + l.bump.x * .6,
-            ib = dgLerp(DGK.hipP[2], DGK.adsP[2], cb) + DGK.reloadP[2] * eb + l.kZ.x * .55 + bb * .004 * (1 - cb) * (1 - db),
-            jb = DGK.hipR[0] * (1 - cb) + DGK.adsR[0] * cb + DGK.reloadR[0] * eb - .16 * fb + l.swP.x + l.jP.x + l.kP.x + l.bump.x * 1.5,
-            kb = DGK.hipR[1] * (1 - cb) + DGK.adsR[1] * cb + DGK.reloadR[1] * eb + l.swY.x + l.kY.x,
-            lb = DGK.hipR[2] * (1 - cb) + DGK.adsR[2] * cb + DGK.reloadR[2] * eb + .62 * fb + l.swY.x * .7 - ab * .035 * (1 - cb) + l.kR.x;
+            gb = dgLerp(T.hipP[0], T.adsP[0], cb) + T.reloadP[0] * eb + Z - l.swY.x * .06 - ab * .004 * (1 - cb),
+            hb = dgLerp(T.hipP[1], T.adsP[1], cb) + T.reloadP[1] * eb + $ + l.swP.x * .05 + l.jY.x + l.bump.x * .6,
+            ib = dgLerp(T.hipP[2], T.adsP[2], cb) + T.reloadP[2] * eb + l.kZ.x * .55 + bb * .004 * (1 - cb) * (1 - db),
+            jb = T.hipR[0] * (1 - cb) + T.adsR[0] * cb + T.reloadR[0] * eb - .16 * fb + l.swP.x + l.jP.x + l.kP.x + l.bump.x * 1.5,
+            kb = T.hipR[1] * (1 - cb) + T.adsR[1] * cb + T.reloadR[1] * eb + l.swY.x + l.kY.x,
+            lb = T.hipR[2] * (1 - cb) + T.adsR[2] * cb + T.reloadR[2] * eb + .62 * fb + l.swY.x * .7 - ab * .035 * (1 - cb) + l.kR.x;
         e.position.set(gb, hb, ib), e.rotation.set(jb, kb, lb, "YXZ")
     }
 
     function _() {
-        w.ammo = DGK.mag, w.state = "idle", w.ads = 0, w.spread = .016, Object.assign(l, {
+        w.ammo = T.mag, w.state = "idle", w.ads = 0, w.spread = T.base, Object.assign(l, {
             t: 0,
             cooldown: 0,
             prevFire: !1,
@@ -2733,18 +2983,19 @@ async function dgBuild(i) {
         a.visible = !1
     }
     let w = {
-        name: DGK.name,
-        kind: "deagle",
-        ammo: DGK.mag,
-        magSize: DGK.mag,
-        reserve: DGK.reserve,
+        name: T.name,
+        kind: kind,
+        ammo: T.mag,
+        magSize: T.mag,
+        reserve: T.reserve,
         state: "idle",
         ads: 0,
-        spread: .016,
-        damage: DGK.damage,
-        rpm: DGK.rpm,
+        spread: T.base,
+        damage: T.damage,
+        rpm: T.rpm,
         root: e,
         debug: c,
+        info: n,
         update: A,
         reset: _,
         setVisible(C) {
@@ -2765,115 +3016,371 @@ async function dgBuild(i) {
     };
     return _(), w
 }
-async function dgn(i) {
-    let e = await dm(i);
-    e.kind = "pac9";
-    let t = null;
-    try {
-        t = await dgBuild(i)
-    } catch (n) {
-        console.error("[deagle] build failed", n)
-    }
-    dgAudio(i);
-    let n = 1,
-        s = !0,
-        o = 0,
-        r = () => n === 1 || !t ? e : t;
 
-    function a(l) {
-        !t || n === l || (n = l, e.cancelReload && e.cancelReload(), t.cancelReload && t.cancelReload(), e.setVisible(s && l === 1), t.setVisible(s && l === 2), e.debug.noFire = !0, t.debug.noFire = !0, o = .32, i.audio && i.audio.play && i.audio.play("pistol_click", {
+/* 门面（spec §2/§3/§4）：双槽位 + Q 快切 + F 捡起 + G 丢弃 + 地面武器实体。
+   五种实例启动时全部构建（切换/捡取发生在同步 update 内，必须预先存在）；
+   每 kind 全场唯一（槽位+地面守恒 5 把），实例按 kind 复用、弹药随实体走。 */
+async function dgn(i) {
+    let inst = {
+        pac9: await dm(i)
+    };
+    await Promise.all(["deagle", "awp", "mp5", "uzi"].map(k => dgBuild(i, k).then(w => inst[k] = w).catch(err => console.error("[dg] build failed:", k, err))));
+    dgAudio(i);
+    let slots = [{
+            slot: 1,
+            kind: "pac9",
+            name: DGTypes.pac9.name
+        }, {
+            slot: 2,
+            kind: "deagle",
+            name: DGTypes.deagle.name
+        }],
+        cur = 1,
+        lastSlot = 2,
+        vis = !0,
+        buf = 0,
+        pickups = [],
+        beamG = null,
+        beamM = null;
+    for (let s of slots) s.kind && !inst[s.kind] && (s.kind = null, s.name = "—");
+
+    function kindAt(n) {
+        let s = slots[n - 1];
+        return s && s.kind && inst[s.kind] ? s.kind : null
+    }
+
+    function active() {
+        let k = kindAt(cur);
+        return k ? inst[k] : null
+    }
+
+    function syncSlot(s) {
+        s.kind = s.kind && inst[s.kind] ? s.kind : null, s.name = s.kind ? DGTypes[s.kind].name : "—"
+    }
+
+    function setNoFire(v) {
+        for (let k in inst) inst[k] && inst[k].debug && (inst[k].debug.noFire = v)
+    }
+
+    function applyVis() {
+        let k = kindAt(cur);
+        for (let kk in inst) inst[kk] && inst[kk].setVisible(vis && kk === k);
+        for (let p of pickups) p.pivot.visible = vis
+    }
+
+    function click() {
+        i.audio && i.audio.play && i.audio.play("pistol_click", {
             gain: .5,
             pitch: .92
-        }))
+        })
     }
-    return {
+
+    function switchTo(n) {
+        if (n === cur || !kindAt(n)) return !1;
+        lastSlot = cur, cur = n;
+        for (let k in inst) inst[k] && inst[k].cancelReload && inst[k].cancelReload();
+        return applyVis(), buf = .32, setNoFire(!0), click(), !0
+    }
+
+    function quickSwitch() {
+        let t = lastSlot;
+        if (t === cur || !kindAt(t)) t = cur === 1 ? 2 : 1;
+        if (t === cur || !kindAt(t)) return !1;
+        return switchTo(t)
+    }
+
+    function beam() {
+        if (!beamG) {
+            beamG = new lt.CylinderGeometry(.04, .04, 1.2, 12, 1, !1);
+            let cv = document.createElement("canvas");
+            cv.width = 4, cv.height = 64;
+            let cx = cv.getContext("2d"),
+                gr = cx.createLinearGradient(0, 0, 0, 64);
+            gr.addColorStop(0, "rgba(255,179,71,0)"), gr.addColorStop(.18, "rgba(255,179,71,.5)"), gr.addColorStop(.8, "rgba(255,179,71,.34)"), gr.addColorStop(1, "rgba(255,179,71,0)"), cx.fillStyle = gr, cx.fillRect(0, 0, 4, 64);
+            beamM = new lt.MeshBasicMaterial({
+                map: new lt.CanvasTexture(cv),
+                transparent: !0,
+                blending: lt.AdditiveBlending,
+                depthWrite: !1,
+                side: lt.DoubleSide
+            })
+        }
+        let m = new lt.Mesh(beamG, beamM);
+        return m.position.y = .6, m
+    }
+
+    function spawnPickup(kind, x, z, mag, maxY) {
+        let T = DGTypes[kind],
+            src = inst[kind];
+        if (!T || !src || !src.root) return null;
+        let gy = 0;
+        try {
+            i.physics && i.physics.groundHeight && (gy = i.physics.groundHeight(x, z, maxY == null ? 1.2 : maxY))
+        } catch (err) {}
+        isFinite(gy) || (gy = 0);
+        let pivot = new lt.Group;
+        pivot.name = "pickup-" + kind, pivot.position.set(x, gy, z);
+        let spin = new lt.Group;
+        pivot.add(spin);
+        let model = src.root.clone(!0),
+            drop = [];
+        model.position.set(0, 0, 0), model.rotation.set(0, 0, 0), model.visible = !0, model.traverse(o => {
+            o.layers && o.layers.set(vf);
+            let mm = o.material;
+            o.isMesh && mm && (o.name === "dg-flash" || mm.name === "glove_fabric" || mm.uniforms && mm.uniforms.uInt || mm.type === "MeshBasicMaterial" && mm.blending === lt.AdditiveBlending) && drop.push(o)
+        });
+        for (let o of drop) o.parent && o.parent.remove(o);
+        spin.add(model), pivot.add(beam()), i.scene.add(pivot), pivot.visible = vis, pivot.updateMatrixWorld(!0);
+        let box = new lt.Box3().setFromObject(model);
+        box.isEmpty() ? model.position.y = gy + .1 : (() => {
+            let c = box.getCenter(new lt.Vector3);
+            model.position.x = x - c.x, model.position.z = z - c.z, model.position.y += gy + .03 - box.min.y
+        })();
+        let rec = {
+            kind: kind,
+            name: T.name,
+            mag: Math.max(0, Math.min(T.mag, mag | 0)),
+            pos: new lt.Vector3(x, gy, z),
+            pivot: pivot,
+            spin: spin
+        };
+        return pickups.push(rec), rec
+    }
+
+    function removePickup(p) {
+        let ix = pickups.indexOf(p);
+        ix >= 0 && pickups.splice(ix, 1), p.pivot.parent && p.pivot.parent.remove(p.pivot)
+    }
+
+    function spawnInitial() {
+        for (let p of pickups.slice()) i.scene.remove(p.pivot);
+        pickups.length = 0, spawnPickup("awp", 8, 2, DGTypes.awp.mag), spawnPickup("mp5", -4, -12, DGTypes.mp5.mag), spawnPickup("uzi", 18, 4, DGTypes.uzi.mag)
+    }
+
+    function nearestPickup() {
+        let pp = i.player && i.player.pos;
+        if (!pp) return null;
+        let best = null,
+            bd = 2.5;
+        for (let p of pickups) {
+            let d = Math.hypot(p.pos.x - pp.x, p.pos.z - pp.z);
+            d <= bd && (bd = d, best = p)
+        }
+        return best ? {
+            p: best,
+            dist: bd
+        } : null
+    }
+
+    function doPickup() {
+        let n = nearestPickup();
+        if (!n) return !1;
+        let s = slots[cur - 1],
+            px = n.p.pos.x,
+            pz = n.p.pos.z,
+            py = n.p.pos.y,
+            bk = n.p.kind,
+            bm = n.p.mag;
+        removePickup(n.p);
+        let old = s.kind && inst[s.kind] ? inst[s.kind] : null;
+        if (old) {
+            let oldAmmo = old.ammo;
+            old.cancelReload && old.cancelReload(), old.reset && old.reset(), spawnPickup(s.kind, px, pz, oldAmmo, py + 1)
+        }
+        s.kind = bk, syncSlot(s);
+        let ni = inst[bk];
+        return ni && (ni.cancelReload && ni.cancelReload(), ni.reset && ni.reset(), ni.ammo = bm), applyVis(), buf = .32, setNoFire(!0), click(), !0
+    }
+
+    function doDrop() {
+        let s = slots[cur - 1];
+        if (!s.kind || !inst[s.kind]) return !1;
+        let k = s.kind,
+            mag = inst[k].ammo,
+            pp = i.player && i.player.pos;
+        inst[k].cancelReload && inst[k].cancelReload(), inst[k].reset && inst[k].reset(), spawnPickup(k, pp ? pp.x : 0, pp ? pp.z : 0, mag, (pp ? pp.y : 0) + 1.5), s.kind = null, syncSlot(s);
+        let other = cur === 1 ? 2 : 1;
+        if (kindAt(other)) return switchTo(other);
+        return applyVis(), buf = .32, setNoFire(!0), click(), !0
+    }
+
+    function resetAll() {
+        for (let k in inst) inst[k] && inst[k].reset && inst[k].reset();
+        slots[0].kind = inst.pac9 ? "pac9" : null, syncSlot(slots[0]);
+        slots[1].kind = inst.deagle ? "deagle" : null, syncSlot(slots[1]);
+        cur = 1, lastSlot = 2, buf = 0, setNoFire(!1), spawnInitial(), applyVis()
+    }
+    dgModels.pac9 = {
+        muzzle: mi.muzzle,
+        eject: mi.eject,
+        names: ["pac9-procedural"],
+        scaleLen: 0
+    }, spawnInitial(), applyVis();
+    let facade = {
         get kind() {
-            return r().kind
+            return kindAt(cur)
         },
         get slot() {
-            return n
+            return cur
+        },
+        get slots() {
+            return slots
         },
         get name() {
-            return r().name
+            let a = active();
+            return a ? a.name : "—"
         },
         get ammo() {
-            return r().ammo
+            let a = active();
+            return a ? a.ammo : 0
         },
-        set ammo(l) {
-            r().ammo = l
+        set ammo(v) {
+            let a = active();
+            a && (a.ammo = v)
         },
         get magSize() {
-            return r().magSize
+            let a = active();
+            return a ? a.magSize : 0
         },
-        set magSize(l) {
-            r().magSize = l
+        set magSize(v) {
+            let a = active();
+            a && (a.magSize = v)
         },
         get reserve() {
-            return r().reserve
+            let a = active();
+            return a ? a.reserve : 0
         },
-        set reserve(l) {
-            r().reserve = l
+        set reserve(v) {
+            let a = active();
+            a && (a.reserve = v)
         },
         get state() {
-            return r().state
+            let a = active();
+            return a ? a.state : "unarmed"
         },
-        set state(l) {
-            r().state = l
+        set state(v) {
+            let a = active();
+            a && (a.state = v)
         },
         get ads() {
-            return r().ads
+            let a = active();
+            return a ? a.ads : 0
         },
-        set ads(l) {
-            r().ads = l
+        set ads(v) {
+            let a = active();
+            a && (a.ads = v)
         },
         get spread() {
-            return r().spread
+            let a = active();
+            return a ? a.spread : 0
         },
-        set spread(l) {
-            r().spread = l
+        set spread(v) {
+            let a = active();
+            a && (a.spread = v)
         },
         get damage() {
-            return r().damage
+            let a = active();
+            return a ? a.damage : 0
         },
         get rpm() {
-            return r().rpm
+            let a = active();
+            return a ? a.rpm : 0
+        },
+        get adsFov() {
+            let k = kindAt(cur);
+            return k && DGTypes[k] ? DGTypes[k].adsFov : 0
+        },
+        get pickup() {
+            let n = nearestPickup();
+            return n ? {
+                kind: n.p.kind,
+                name: n.p.name,
+                dist: n.dist
+            } : null
         },
         get root() {
-            return r().root
+            let a = active();
+            return a ? a.root : null
         },
         get debug() {
-            return r().debug
+            let a = active();
+            return a ? a.debug : null
         },
         get info() {
-            return r().info
+            let a = active();
+            return a ? a.info : null
         },
         update(l) {
-            let c = i.input;
-            c && c.pressed && (t && c.pressed("weapon2") && n !== 2 ? a(2) : c.pressed("weapon1") && n !== 1 && a(1)), o > 0 && (o -= l, o <= 0 && (e.debug.noFire = !1, t && (t.debug.noFire = !1))), r().update(l)
+            let inp = i.input;
+            if (inp && inp.pressed) {
+                inp.pressed("weapon1") && switchTo(1);
+                inp.pressed("weapon2") && switchTo(2);
+                inp.pressed("lastWeapon") && quickSwitch();
+                inp.pressed("pickup") && doPickup();
+                inp.pressed("drop") && doDrop()
+            }
+            if (buf > 0) {
+                buf -= l;
+                buf <= 0 && setNoFire(!1)
+            }
+            for (let p of pickups) p.spin.rotation.y += .5 * l;
+            let a = active();
+            a && a.update(l)
         },
-        reset() {
-            e.reset && e.reset(), t && t.reset && t.reset(), n = 1, o = 0, e.debug.noFire = !1, t && (t.debug.noFire = !1), e.setVisible(s), t && t.setVisible(!1)
+        reset: resetAll,
+        setVisible(v) {
+            vis = !!v, applyVis()
         },
-        setVisible(l) {
-            s = !!l, e.setVisible(s && (n === 1 || !t)), t && t.setVisible(s && n === 2)
-        },
-        muzzleWorld(l) {
-            return r().muzzleWorld(l)
+        muzzleWorld(v) {
+            let a = active();
+            return a ? a.muzzleWorld(v) : v || new lt.Vector3()
         },
         reloadNow() {
-            return r().reloadNow()
+            let a = active();
+            return a ? a.reloadNow() : !1
         },
         cancelReload() {
-            e.cancelReload && e.cancelReload(), t && t.cancelReload && t.cancelReload()
+            for (let k in inst) inst[k] && inst[k].cancelReload && inst[k].cancelReload()
         },
-        addAmmo(l) {
-            r().addAmmo(l)
+        addAmmo(v) {
+            let a = active();
+            a && a.addAmmo && a.addAmmo(v)
         },
-        setWetness(l) {
-            e.setWetness && e.setWetness(l)
+        setWetness(v) {
+            inst.pac9 && inst.pac9.setWetness && inst.pac9.setWetness(v)
         },
         snap() {
-            r().snap && r().snap()
+            let a = active();
+            a && a.snap && a.snap()
         }
-    }
+    };
+    return window.__DG = {
+        types: DGTypes,
+        models: dgModels,
+        get slots() {
+            return slots.map(s => ({
+                slot: s.slot,
+                kind: s.kind,
+                name: s.name
+            }))
+        },
+        get pickups() {
+            return pickups.map(p => ({
+                kind: p.kind,
+                name: p.name,
+                mag: p.mag,
+                pos: [p.pos.x, p.pos.y, p.pos.z]
+            }))
+        },
+        get kind() {
+            return kindAt(cur)
+        },
+        get slot() {
+            return cur
+        },
+        get muzzle() {
+            let k = kindAt(cur);
+            return k && dgModels[k] ? dgModels[k].muzzle : null
+        }
+    }, facade
 }

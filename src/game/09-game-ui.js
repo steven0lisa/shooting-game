@@ -1887,20 +1887,21 @@ function hM(i) {
         A = m.querySelector(".fg"),
         _ = m.querySelector(".h-key"),
         M = m.querySelector(".h-plabel"),
+        PK = li("div", "h-pickup"),
         E = li("div", "h-feed"),
         w = li("div", "h-msg"),
         S = li("div", "h-health", '<div class="h-k">生命状态</div><div class="h-hp-row"><b class="h-hp-n">100</b><div class="h-hp-bar">' + "<i></i>".repeat(10) + "</div></div>"),
         z = S.querySelector(".h-hp-n"),
         H = [...S.querySelectorAll(".h-hp-bar i")],
-        O = li("div", "h-ammo", '<div class="h-cue"></div><div class="h-ammo-row"><b class="h-ammo-n">30</b><span class="h-ammo-r">120</span></div><div class="h-pips"></div><div class="h-wname"></div><div class="h-slots"><b data-s="1" class="on">1 主武器</b><b data-s="2">2 沙漠之鹰</b></div>'),
+        O = li("div", "h-ammo", '<div class="h-cue"></div><div class="h-ammo-row"><b class="h-ammo-n">30</b><span class="h-ammo-r">120</span></div><div class="h-pips"></div><div class="h-wname"></div><div class="h-slots"></div>'),
         q = O.querySelector(".h-ammo-n"),
         U = O.querySelector(".h-ammo-r"),
         T = O.querySelector(".h-pips"),
         D = O.querySelector(".h-wname"),
         C = O.querySelector(".h-cue"),
-        SL = [...O.querySelectorAll(".h-slots b")],
+        SL = O.querySelector(".h-slots"),
         G = li("div", "h-marks");
-    t.append(G, n, c, d, y, v, x, m, E, w, S, O), e.appendChild(t);
+    t.append(G, n, c, d, y, v, x, m, PK, E, w, S, O), e.appendChild(t);
     let j = li("div", "comms", '<span class="comms-who">指挥中心</span><span class="comms-t"></span>');
     j.setAttribute("role", "status"), j.setAttribute("aria-live", "polite");
     let N = j.querySelector(".comms-t");
@@ -1915,6 +1916,9 @@ function hM(i) {
             reserve: -1,
             name: null,
             slot: -1,
+            slots: null,
+            pickup: null,
+            hrd: null,
             cue: null,
             low: null,
             hp: -1,
@@ -2128,19 +2132,32 @@ function hM(i) {
                 Oe = Math.tan(we) / Math.tan(be) * (F / 2) + 4 + (ce.sprinting ? 10 : 0);
             Oe = Math.round(Math.max(4, Math.min(70, Oe)) * 2) / 2, Oe !== X.gap && (X.gap = Oe, g[0].style.transform = `translate3d(-50%,${-Oe}px,0) translateY(-100%)`, g[1].style.transform = `translate3d(-50%,${Oe}px,0)`, g[2].style.transform = `translate3d(${-Oe}px,-50%,0) translateX(-100%)`, g[3].style.transform = `translate3d(${Oe}px,-50%,0)`)
         }
-        let Ne = Math.max(1, Math.min(60, ve.magSize | 0 || 30)),
-            dt = Math.max(0, ve.ammo | 0),
-            inf = ve.reserve < 0,
+        let hr = ve.state === "unarmed" || "kind" in ve && ve.kind == null,
+            mg = ve.magSize | 0,
+            Ne = hr ? 0 : mg > 0 ? Math.min(60, mg) : "magSize" in ve ? 0 : 30,
+            dt = hr ? 0 : Math.max(0, ve.ammo | 0),
+            inf = !hr && ve.reserve < 0,
             xe = inf ? -1 : Math.max(0, ve.reserve | 0);
+        hr !== X.hrd && (X.hrd = hr, X.mag = -1, X.ammo = -1, X.reserve = -3, X.cue = null);
         if (Ne !== X.mag && (X.mag = Ne, T.innerHTML = "<i></i>".repeat(Ne), ne = [...T.children], X.ammo = -1), dt !== X.ammo) {
-            X.ammo = dt, q.textContent = String(dt).padStart(2, "0");
+            X.ammo = dt, q.textContent = hr ? "—" : String(dt).padStart(2, "0");
             for (let we = 0; we < ne.length; we++) ne[we].className = we < dt ? "" : "off"
-        }(inf ? X.reserve !== -2 : xe !== X.reserve) && (X.reserve = inf ? -2 : xe, U.textContent = inf ? "∞" : String(xe).padStart(3, "0")), ve.name !== X.name && (X.name = ve.name, D.textContent = ve.name || "");
-        let Gs = ve.slot | 0 || 1;
-        Gs !== X.slot && (X.slot = Gs, SL.forEach(wb => wb.classList.toggle("on", +wb.dataset.s === Gs)));
-        let Ie = dt <= Math.ceil(Ne * .27),
-            Be = ve.state === "reloading" ? "换弹中" : dt === 0 ? inf || xe > 0 ? i.input.touch ? "换弹" : "R · 换弹" : "弹药耗尽" : Ie ? "弹药不足" : "";
-        Be !== X.cue && (X.cue = Be, C.textContent = Be, C.className = "h-cue" + (Be ? " on" : "") + (dt === 0 && ve.state !== "reloading" ? " urgent" : "")), Ie !== X.low && (X.low = Ie, O.classList.toggle("low", Ie));
+        }
+        hr ? X.reserve !== -1 && (X.reserve = -1, U.textContent = "") : (inf ? X.reserve !== -2 : xe !== X.reserve) && (X.reserve = inf ? -2 : xe, U.textContent = inf ? "∞" : String(xe).padStart(3, "0"));
+        let nm = hr ? "" : ve.name || "";
+        nm !== X.name && (X.name = nm, D.textContent = nm);
+        let Gs = ve.slot | 0 || 1,
+            Ws = Array.isArray(ve.slots) ? ve.slots.map(wb => {
+                let sn = wb.slot | 0,
+                    ek = wb.kind == null && (!wb.name || wb.name === "—");
+                return `<b data-s="${sn}" class="${(sn === Gs ? "on" : "") + (ek ? " empty" : "")}">${sn} ${ek ? "—" : wb.name || "—"}</b>`
+            }).join("") : `<b data-s="1" class="${Gs === 1 ? "on" : ""}">1 ${Gs === 1 ? ve.name || "—" : "—"}</b><b data-s="2" class="${Gs === 2 ? "on" : ""}">2 ${Gs === 2 ? ve.name || "—" : "—"}</b>`;
+        Ws !== X.slots && (X.slots = Ws, SL.innerHTML = Ws);
+        let pk = ve.pickup ? "按 F 捡起 " + (ve.pickup.name || ve.pickup.kind || "") : "";
+        pk !== X.pickup && (X.pickup = pk, PK.textContent = pk, PK.classList.toggle("on", !!pk));
+        let Ie = !hr && dt <= Math.ceil(Ne * .27),
+            Be = hr ? "" : ve.state === "reloading" ? "换弹中" : dt === 0 ? inf || xe > 0 ? i.input.touch ? "换弹" : "R · 换弹" : "弹药耗尽" : Ie ? "弹药不足" : "";
+        Be !== X.cue && (X.cue = Be, C.textContent = Be, C.className = "h-cue" + (Be ? " on" : "") + (!hr && dt === 0 && ve.state !== "reloading" ? " urgent" : "")), Ie !== X.low && (X.low = Ie, O.classList.toggle("low", Ie));
         let Xe = Math.max(0, Math.ceil(ce.health)),
             Me = ce.health < ce.maxHealth - .5;
         if (Xe !== X.hp) {
@@ -2230,7 +2247,8 @@ var $C = `
     <div><dt>跳跃</dt><dd><kbd>Space</kbd></dd></div>
     <div><dt>冲刺</dt><dd><kbd>Shift</kbd></dd></div>
     <div><dt>蹲伏</dt><dd><kbd>C</kbd> 或 <kbd>Ctrl</kbd></dd></div>
-    <div><dt>近战</dt><dd><kbd>F</kbd></dd></div>
+    <div><dt>近战</dt><dd><kbd>V</kbd></dd></div>
+    <div><dt>武器</dt><dd><kbd>Q</kbd> 切换上一把 · <kbd>F</kbd> 捡起武器 · <kbd>G</kbd> 丢弃武器</dd></div>
     <div><dt>暂停</dt><dd><kbd>Esc</kbd> 或 <kbd>P</kbd></dd></div>
   </dl>`,
     ZC = `

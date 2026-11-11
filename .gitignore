@@ -3,3 +3,4 @@
 .video_agent/
 dist/
 go-prod.md
+.findings/
