@@ -2290,11 +2290,20 @@ async function PC(i) {
         }
     }
 }
+/* v3 真实全长等比渲染（2026-11-13）：DGVM = 视模统一系数（真实全长米 → 视模最长边米），集中一处便于调校。
+   公式：targetLen = oal ? oal * DGVM : (scaleLen || .3)——oal 存在时枪与枪的大小比严格等于真实 oal 比；
+   无 oal（如 pac9 程序化、GUNDATA 未补 oal 的过渡期）回退旧类别区间 scaleLen。
+   所有缩放调用点（dgGlb 归一化 / dgPlaceholder 盒体 / dgAssemble 位姿 fz / 懒加载换装）统一走 dgTargetLen。 */
+var DGVM = .5;
+
+function dgTargetLen(T) {
+    return T && T.oal ? T.oal * DGVM : (T && T.scaleLen || .3)
+}
 /* ============================================================ 武器系统 v2 —— 类型注册表 DGTypes（契约 notes/weapons-v2-spec.md §1）
    五种武器：pac9（dm 程序化）/ deagle / awp / mp5 / uzi（后四者 dgGlb 加载）
    字段：名称/弹匣/备弹(-1=∞)/RPM/扛法(hold:auto|semi|bolt)/伤害/射程/adsFov/
          换弹(战术/空仓)/散布 bloom 与恢复/基础-开镜散布/后坐系数/每发热量/
-         位姿表(hip/ads/reload × P/R)/scaleLen/模型路径/音效名
+         位姿表(hip/ads/reload × P/R)/scaleLen/oal(真实全长米,v3 等比渲染)/模型路径/音效名
    注：换弹相位(magout/magin/tap/bolt)按 deagle 现值对总时长的比例在 dgBuild 内推导
        （.256/.674/.753 × reloadT、.86 × reloadE，还原 deagle .55/1.45/1.62/2.45）；
        散布/后坐未列出的类型项为按 spec §1 基线拟合的估计值（见报告"与 spec 出入"）。 */
@@ -2349,13 +2358,14 @@ var DGTypes = {
             adsB: .0012,
             rc: 1,
             heat: .09,
-            hipP: [.135, -.158, -.3],
+            hipP: [.112, -.108, -.225],
             hipR: [.03, .06, -.02],
-            adsP: [0, -.104, -.2],
+            adsP: [0, -.078, -.17],
             adsR: [0, 0, 0],
-            reloadP: [0, -.09, .05],
+            reloadP: [0, -.07, .045],
             reloadR: [-.55, .12, -.18],
             scaleLen: .3,
+            oal: .269,
             model: "assets/models/desert-eagle.glb",
             sfx: {
                 shot: "pistol_shot",
@@ -2388,6 +2398,7 @@ var DGTypes = {
             reloadP: [0, -.09, .06],
             reloadR: [-.5, .1, -.15],
             scaleLen: .55,
+            oal: 1.18,
             model: "assets/models/awp.glb",
             sfx: {
                 shot: "awp_shot",
@@ -2420,6 +2431,7 @@ var DGTypes = {
             reloadP: [0, -.09, .05],
             reloadR: [-.55, .12, -.18],
             scaleLen: .36,
+            oal: .68,
             model: "assets/models/mp5.glb",
             sfx: {
                 shot: "mp5_shot",
@@ -2452,6 +2464,7 @@ var DGTypes = {
             reloadP: [0, -.09, .05],
             reloadR: [-.55, .12, -.18],
             scaleLen: .22,
+            oal: .47,
             model: "assets/models/uzi.glb",
             sfx: {
                 shot: "uzi_shot",
@@ -2462,6 +2475,8 @@ var DGTypes = {
     dgLerp = (i, e, t) => i + (e - i) * t,
     dgClamp = (i, e, t) => i < e ? e : i > t ? t : i,
     dgModels = {},
+    /* v3 真实全长等比：每 kind 的数值验收记录 {kind,oal,targetLen,renderLen}，挂到 window.__DG.render */
+    dgRenderInfo = {},
     dgGundataCount = 0,
     /* 集装箱刷枪上限：47 点全放会常驻 47 模型+47 光柱，取最底层点中随机 ≤12 个 */
     dgContainerMax = 12,
@@ -2492,13 +2507,15 @@ var DGTypes = {
                 base: cat === "pistol" ? .016 : .013,
                 adsB: cat === "pistol" ? .0012 : .0015,
                 heat: cat === "pistol" ? .09 : .05,
-                hipP: cat === "pistol" ? [.135, -.158, -.3] : [.13, -.15, -.32],
+                hipP: cat === "pistol" ? [.112, -.108, -.225] : [.13, -.15, -.32],
                 hipR: [.03, .06, -.02],
-                adsP: cat === "pistol" ? [0, -.104, -.2] : [0, -.108, -.26],
+                adsP: cat === "pistol" ? [0, -.078, -.17] : [0, -.108, -.26],
                 adsR: [0, 0, 0],
-                reloadP: [0, -.09, .05],
+                reloadP: cat === "pistol" ? [0, -.07, .045] : [0, -.09, .05],
                 reloadR: [-.55, .12, -.18],
                 scaleLen: Math.max(.18, Math.min(.6, +g.scaleLen || (cat === "pistol" ? .28 : .4))),
+                /* v3 真实全长等比：GUNDATA 带 oal（米）则透传，dgTargetLen 优先按 oal×DGVM；缺失回退上行 scaleLen */
+                oal: +g.oal > .05 && +g.oal < 2.5 ? +g.oal : null,
                 model: g.model || "assets/models/v3/" + g.slug + ".glb",
                 sfx: null,
                 __dgData: !0
@@ -2674,7 +2691,9 @@ async function dgGlb(i, dgLen = .3) {
     let f = new lt.Group,
         p = [],
         d = new lt.Matrix4,
-        bp = [];
+        bp = [],
+        /* v3 真实全长等比：命名挂点候选（Mega Weapon Pack 的 "muzzle" 节点），归一化变换后取最前端点做枪口 */
+        mp = [];
 
     function v(y, b, B) {
         let m = s.nodes[y],
@@ -2686,7 +2705,7 @@ async function dgGlb(i, dgLen = .3) {
                 w = m.scale || [1, 1, 1];
             A.compose(new lt.Vector3(S[0], S[1], S[2]), new lt.Quaternion(T[0], T[1], T[2], T[3]), new lt.Vector3(w[0], w[1], w[2]))
         }
-        if (A.premultiply(b), m.name && p.push(m.name), !B && m.name && /barrel/i.test(m.name) && (B = !0), m.mesh != null)
+        if (A.premultiply(b), m.name && p.push(m.name), m.name && /muzzle/i.test(m.name) && mp.push(A), !B && m.name && /barrel/i.test(m.name) && (B = !0), m.mesh != null)
             for (let S of s.meshes[m.mesh].primitives) {
                 let T = new lt.BufferGeometry;
                 T.setAttribute("position", new lt.Float32BufferAttribute(c(S.attributes.POSITION), 3)), S.attributes.NORMAL != null && T.setAttribute("normal", new lt.Float32BufferAttribute(c(S.attributes.NORMAL), 3)), S.attributes.TEXCOORD_0 != null && T.setAttribute("uv", new lt.Float32BufferAttribute(c(S.attributes.TEXCOORD_0), 2)), S.indices != null && T.setIndex(new lt.BufferAttribute(c(S.indices, !0), 1)), T.applyMatrix4(A), S.attributes.NORMAL == null && T.computeVertexNormals();
@@ -2720,6 +2739,18 @@ async function dgGlb(i, dgLen = .3) {
             names: p,
             size: [x.x, x.y, x.z]
         };
+    /* v3 真实全长等比：若 GLB 带命名 "muzzle" 挂点（Mega Weapon Pack）优先取其位置做枪口——
+       节点累积矩阵经归一化 T 变换到最终视模局部空间；仅当变换后确实落在枪身前段才采用，
+       否则（名称挂在别处/位置离谱）回退上面 barrel 包围盒启发式。 */
+    if (mp.length) {
+        let mq = new lt.Vector3,
+            mb = null;
+        for (let M of mp) {
+            mq.set(M.elements[12], M.elements[13], M.elements[14]).applyMatrix4(T);
+            if (!mb || mq.z < mb.z) mb = mq.clone()
+        }
+        if (mb && mb.z < w.min.z * .5 && isFinite(mb.x) && isFinite(mb.y)) k.muzzle = [+mb.x.toFixed(4), +mb.y.toFixed(4), +mb.z.toFixed(4)], k.muzzleFromNode = !0
+    }
     if (bp.length) {
         let b2 = new lt.Box3;
         for (let w2 of bp) b2.expandByObject(w2);
@@ -2811,9 +2842,11 @@ function dgSynth(i, e) {
     return n
 }
 
-/* 模型缺失/损坏时的占位回退（spec §5.4）：细长盒体拼枪形，枪口朝 -z，info 形状与 dgGlb 一致 */
+/* 模型缺失/损坏时的占位回退（spec §5.4）：细长盒体拼枪形，枪口朝 -z，info 形状与 dgGlb 一致。
+   v3 真实全长等比：尺寸按 targetLen（=oal×DGVM 或回退 scaleLen）拟合枪形比例 长:宽:高 ≈ 1:0.12:0.18，
+   整体包围盒最长边（z）= targetLen，与 dgGlb 归一化结果同基准。 */
 function dgPlaceholder(i) {
-    let e = i.scaleLen || .3,
+    let e = dgTargetLen(i),
         t = new lt.Group;
     t.name = "viewmodel-" + i.kind + "-placeholder";
     let n = new lt.MeshStandardMaterial({
@@ -2825,13 +2858,14 @@ function dgPlaceholder(i) {
             let h = new lt.Mesh(new lt.BoxGeometry(o, r, a), n);
             h.position.set(l, c, u), h.castShadow = h.receiveShadow = !1, t.add(h)
         };
-    return s(e * .5, e * .16, e * .14, 0, 0, 0), s(e * .06, e * .06, e * .5, 0, e * .02, -e * .4), s(e * .09, e * .2, e * .1, 0, -e * .16, e * .1), s(e * .08, e * .2, e * .12, 0, -e * .16, -e * .02), s(e * .1, e * .1, e * .2, 0, 0, e * .3), {
+    /* 机匣(.12e宽×.1e高×.42e长) + 枪管(前端到 -0.5e) + 枪托(尾端到 +0.5e) + 握把/弹匣（底到 -0.13e，高约 .18e） */
+    return s(e * .12, e * .1, e * .42, 0, 0, -.01 * e), s(e * .05, e * .05, e * .28, 0, 0, -.36 * e), s(e * .08, e * .08, e * .3, 0, 0, .35 * e), s(e * .08, e * .08, e * .08, 0, -.09 * e, .12 * e), s(e * .07, e * .08, e * .08, 0, -.09 * e, -.12 * e), {
         root: t,
         info: {
-            muzzle: [0, e * .03, -e * .66],
-            eject: [e * .1, e * .04, e * .05],
+            muzzle: [0, 0, -e * .5],
+            eject: [e * .06, e * .05, -.04 * e],
             names: ["placeholder:" + i.kind],
-            size: [e * .5, e * .4, e * 1.1]
+            size: [e * .12, e * .18, e]
         }
     }
 }
@@ -2862,7 +2896,16 @@ function dgAssemble(i, kind, T, t) {
     let o = s.getContext("2d"),
         r = o.createRadialGradient(32, 32, 2, 32, 32, 30);
     r.addColorStop(0, "rgba(255,240,190,1)"), r.addColorStop(.35, "rgba(255,170,60,.75)"), r.addColorStop(1, "rgba(255,120,20,0)"), o.fillStyle = r, o.fillRect(0, 0, 64, 64);
-    let fz = (T.scaleLen || .3) / .3,
+    /* v3 真实全长等比：火光/后坐缩放因子 fz 基准 = targetLen/.3（deagle 旧 scaleLen .3 手感点），随枪长短线性缩放 */
+    let fz = dgTargetLen(T) / .3,
+        /* v3 视觉兜底（任务 §7）：位姿 z 偏移沿枪身长度线性缩放 poseK=targetLen/scaleLen，只取 ≥1 档——
+           枪变长（狙击/长枪）时把整支枪前推、枪托远离近裁剪面防穿模；变短不回拉（贴相机反而显大/出屏，
+           且短枪无后移裁剪风险，"手枪明显变小"本身是正确行为）。内置款新旧长度差 ≤7%，改动极小；
+           pac9 scaleLen=0 走保护分支 poseK=1，程序化模型不受影响。 */
+        poseK = T.scaleLen > 0 ? Math.max(1, dgTargetLen(T) / T.scaleLen) : 1,
+        pzH = T.hipP[2] * poseK,
+        pzA = T.adsP[2] * poseK,
+        pzR = T.reloadP[2] * poseK,
         a = new lt.Mesh(new lt.PlaneGeometry(.22 * fz, .22 * fz), new lt.MeshBasicMaterial({
             map: new lt.CanvasTexture(s),
             blending: lt.AdditiveBlending,
@@ -2872,6 +2915,17 @@ function dgAssemble(i, kind, T, t) {
     a.name = "dg-flash", a.position.set(n.muzzle[0], n.muzzle[1], n.muzzle[2]), a.renderOrder = 10, a.visible = !1, e.add(a), e.traverse(l => {
         l.layers && l.layers.set(zc)
     }), i.camera.add(e), e.visible = !1;
+    /* v3 数值验收：登记该 kind 的等比渲染记录；renderLen 先按当前几何实测（占位=目标值），换装后由 dgSwapModel 更新 */
+    let dgr = dgRenderInfo[kind] || (dgRenderInfo[kind] = {
+        kind: kind,
+        oal: T.oal || null,
+        targetLen: +dgTargetLen(T).toFixed(4),
+        renderLen: null
+    });
+    try {
+        let drb = new lt.Box3().setFromObject(t.root).getSize(new lt.Vector3());
+        dgr.renderLen = +Math.max(drb.x, drb.y, drb.z).toFixed(4)
+    } catch {}
     /* 换弹相位按 deagle 实测比例从总时长推导（.2558/.6744/.7535×reloadT、.8596×reloadE ≈ .55/1.45/1.62/2.45） */
     let PH = {
             mgO: .2558 * T.reloadT,
@@ -3065,7 +3119,7 @@ function dgAssemble(i, kind, T, t) {
             fb = l.rackW,
             gb = dgLerp(T.hipP[0], T.adsP[0], cb) + T.reloadP[0] * eb + Z - l.swY.x * .06 - ab * .004 * (1 - cb),
             hb = dgLerp(T.hipP[1], T.adsP[1], cb) + T.reloadP[1] * eb + $ + l.swP.x * .05 + l.jY.x + l.bump.x * .6,
-            ib = dgLerp(T.hipP[2], T.adsP[2], cb) + T.reloadP[2] * eb + l.kZ.x * .55 + bb * .004 * (1 - cb) * (1 - db),
+            ib = dgLerp(pzH, pzA, cb) + pzR * eb + l.kZ.x * .55 + bb * .004 * (1 - cb) * (1 - db),
             jb = T.hipR[0] * (1 - cb) + T.adsR[0] * cb + T.reloadR[0] * eb - .16 * fb + l.swP.x + l.jP.x + l.kP.x + l.bump.x * 1.5,
             kb = T.hipR[1] * (1 - cb) + T.adsR[1] * cb + T.reloadR[1] * eb + l.swY.x + l.kY.x,
             lb = T.hipR[2] * (1 - cb) + T.adsR[2] * cb + T.reloadR[2] * eb + .62 * fb + l.swY.x * .7 - ab * .035 * (1 - cb) + l.kR.x;
@@ -3148,6 +3202,11 @@ function dgAssemble(i, kind, T, t) {
                     C.isMesh && C.geometry && C.geometry.computeBoundingSphere && C.geometry.computeBoundingSphere()
                 })
             } catch {}
+            /* v3 数值验收：换装完成后实测包围盒最长边 = renderLen（应 ≈ targetLen=oal×DGVM） */
+            try {
+                let drb = new lt.Box3().setFromObject(nt.root).getSize(new lt.Vector3());
+                dgr.renderLen = +Math.max(drb.x, drb.y, drb.z).toFixed(4)
+            } catch {}
         },
         dgIsPlaceholder: () => t.info && t.info.names && t.info.names[0] === "placeholder:" + kind
     };
@@ -3162,7 +3221,7 @@ function dgBuildLazy(i, kind) {
     let w = dgAssemble(i, kind, T, dgPlaceholder(T));
     return dgModels[kind] || (dgModels[kind] = w.info), new Promise(resolve => {
         if (!T.model) return resolve(w);
-        dgGlb(T.model, T.scaleLen || .3).then(t => {
+        dgGlb(T.model, dgTargetLen(T)).then(t => {
             w.dgSwapModel(t)
         }).catch(n => {
             console.warn("[dg] glb load failed (" + T.model + "), keeping placeholder:", n && n.message || n)
@@ -3176,7 +3235,7 @@ async function dgBuild(i, kind) {
     if (!T) throw new Error("[dg] unknown kind: " + kind);
     let t = null;
     if (T.model) try {
-        t = await dgGlb(T.model, T.scaleLen || .3)
+        t = await dgGlb(T.model, dgTargetLen(T))
     } catch (n) {
         console.warn("[dg] glb load failed (" + T.model + "), placeholder fallback:", n)
     }
@@ -3477,7 +3536,13 @@ async function dgn(i) {
         eject: mi.eject,
         names: ["pac9-procedural"],
         scaleLen: 0
-    }, spawnInitial(), applyVis();
+    }, dgRenderInfo.pac9 || (dgRenderInfo.pac9 = {
+        /* v3：pac9 程序化建模不参与等比（无 oal，targetLen 走 scaleLen=0→.3 回退仅占位记录） */
+        kind: "pac9",
+        oal: null,
+        targetLen: +dgTargetLen(DGTypes.pac9).toFixed(4),
+        renderLen: null
+    }), spawnInitial(), applyVis();
     let facade = {
         get kind() {
             return kindAt(cur)
@@ -3619,6 +3684,8 @@ async function dgn(i) {
     return window.__DG = {
         types: DGTypes,
         models: dgModels,
+        /* v3 数值验收：每把已建武器 {kind,oal,targetLen,renderLen}（renderLen=实测包围盒最长边；pac9 程序化不测=null） */
+        render: dgRenderInfo,
         get mode() {
             return i.mode === "rush" ? "rush" : "campaign"
         },
