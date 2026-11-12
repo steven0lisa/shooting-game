@@ -1358,8 +1358,8 @@ var Ui = {
         tokenGap: 1.25,
         exposureUp: .1,
         exposureDown: .45,
-        poolGulls: 10,
-        poolHounds: 8,
+        poolGulls: 20,
+        poolHounds: 16,
         maxWrecks: 5,
         maxBolts: 32
     },
@@ -2277,7 +2277,8 @@ function pM(i, e) {
         <h1 class="m-word">几猫<span class="m-subtitle">3A大作</span></h1>
         <p class="m-premise">港区防御系统失控。切断三处中继，突破封锁，登船撤离。</p>
         <div class="m-actions">
-          <button class="btn primary" data-act="deploy">开始行动</button>
+          <button class="btn primary mode" data-act="deploy" data-mode="campaign">开始行动 · 战役</button>
+          <button class="btn primary mode rush" data-act="deploy" data-mode="rush">开始行动 · 冲刺</button>
           <button class="btn" data-act="settings">设置</button>
           <button class="btn" data-act="about">项目介绍</button>
           <button class="btn m-only-narrow" data-act="controls">操作说明</button>
@@ -2352,6 +2353,7 @@ function pM(i, e) {
       <div class="panel-b" data-pane="controls" hidden>
         <h3>键盘 · 鼠标</h3>${$C}
         <p class="panel-note">若浏览器无法捕获鼠标，按住鼠标按钮并拖动以调整视角（左键同时开火，右键同时瞄准）。方向键或 <kbd>I</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> 转向，<kbd>Enter</kbd> 开火。</p>
+        <p class="panel-note">冲刺模式：只带手枪开局，集装箱内随机刷枪，敌人翻倍。</p>
         <h3>触屏操作</h3>${ZC}
         <h3>手柄</h3>
         <p class="panel-note">摇杆移动与转动视角 · RT 开火 · LT 瞄准 · A 跳跃 · B 蹲伏 · X 换弹 · Y 切断中继 · L3 冲刺 · Start 暂停。</p>
@@ -2553,6 +2555,32 @@ var Yi = {
         titleSpeed: 1.15,
         titleFov: 50
     },
+    // 敌人配额基线（深拷贝）：Yi 是暴露给外部的共享可变对象，按模式必须从基线重算，
+    // 禁止对当前值累乘（campaign ↔ rush 来回切会翻倍爆炸）。
+    YiBase = JSON.parse(JSON.stringify({
+        patrol: Yi.patrol,
+        waves: Yi.waves,
+        maxAlive: Yi.maxAlive,
+        spawnStagger: Yi.spawnStagger,
+        pursuitMinAlive: Yi.pursuitMinAlive,
+        pursuitExtra: Yi.pursuitExtra
+    })),
+    apMode = P => {
+        let V = P === "rush",
+            Y = JSON.parse(JSON.stringify(YiBase));
+        V && (Y.patrol = {
+            gull: Y.patrol.gull * 2,
+            hound: Y.patrol.hound * 2
+        }, Y.waves = Y.waves.map(L => ({
+            gull: L.gull * 2,
+            hound: L.hound * 2
+        })), Y.maxAlive *= 2, Y.pursuitMinAlive *= 2, Y.pursuitExtra *= 2,
+            // 错峰节奏减半：双倍数量不改则铺开时间也翻倍，观感像"没翻倍"
+            Y.spawnStagger = .45);
+        return Yi.patrol = Y.patrol, Yi.waves = Y.waves, Yi.maxAlive = Y.maxAlive,
+            Yi.spawnStagger = Y.spawnStagger, Yi.pursuitMinAlive = Y.pursuitMinAlive,
+            Yi.pursuitExtra = Y.pursuitExtra, V
+    },
     jC = ["北方", "东北方", "东方", "东南方", "南方", "西南方", "西方", "西北方"],
     _l = {
         intro: "几猫队员，这里是指挥中心。港区主控已封锁泊位。切断堆场、仓库、码头的三处中继。",
@@ -2578,8 +2606,13 @@ function mM(i) {
             }
         },
         l = pM(i, {
-            deploy() {
-                a(i.audio, "resume"), r.requestLock(), U({})
+            deploy(P) {
+                // 模式从按钮 dataset 读取；处理器收到的是原始 click 事件
+                let V = P && P.target && P.target.closest && P.target.closest("button"),
+                    Y = V && V.dataset && V.dataset.mode === "rush" ? "rush" : "campaign";
+                a(i.audio, "resume"), r.requestLock(), U({
+                    mode: Y
+                })
             },
             resume() {
                 j(!0)
@@ -2605,6 +2638,7 @@ function mM(i) {
     l.applySettings();
     let c = {
             time: 0,
+            mode: "campaign",
             retries: 0,
             relays: [],
             cut: 0,
@@ -2640,7 +2674,8 @@ function mM(i) {
             start(P = {}) {
                 U({
                     skipIntro: !!P.skipIntro,
-                    quick: !!P.quick
+                    quick: !!P.quick,
+                    mode: P.mode
                 })
             },
             pause() {
@@ -2750,8 +2785,13 @@ function mM(i) {
     function U({
         skipIntro: P = !1,
         quick: V = !1,
-        keepRetries: Y = !1
+        keepRetries: Y = !1,
+        mode: L
     } = {}) {
+        // 模式必须在 H()（内部会调 weapon.reset / enemies.clear / ie() 首波巡逻）之前写入：
+        // 08 侧的 resetAll 读 i.mode 决定开局装备与集装箱撒枪，ie() 读 Yi 的巡逻配额。
+        let Z = L === "rush" || L === "campaign" ? L : i.mode === "rush" || i.mode === "campaign" ? i.mode : c.mode || "campaign";
+        i.mode = c.mode = Z, apMode(Z);
         if (Y || (c.retries = 0), l.show("none"), l.locationCard(!1), a(i.audio, "setPaused", !1), H(), a(i.weapon, "setVisible", !0), g = !1, P) {
             e.fade = 0, T();
             return
@@ -3181,7 +3221,8 @@ async function QC() {
             fov: i.fov
         }), !n && (i.shot || i.autostart)) try {
         t.game.start({
-            skipIntro: !0
+            skipIntro: !0,
+            mode: i.mode === "rush" || i.rush != null && i.rush !== "0" ? "rush" : "campaign"
         })
     } catch (h) {
         console.error("[boot] game.start failed", h)

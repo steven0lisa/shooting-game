@@ -234,6 +234,11 @@ body { background: var(--ink); color: var(--bone); overflow: hidden; font-family
 .btn:active { background: rgba(232, 228, 218, .22); }
 .btn.primary { background: var(--signal); border-color: var(--signal); color: var(--ink); font-size: 18px; font-weight: 600; letter-spacing: .3em; min-height: 52px; padding: 2px 40px 0 44px; }
 .btn.primary:hover { background: var(--signal-hot); border-color: var(--signal-hot); }
+/* mode pair on the title: campaign keeps the filled signal plate, rush is the outlined twin */
+.btn.primary.mode { letter-spacing: .16em; padding: 2px 26px 0 28px; flex: 0 1 auto; }
+.btn.primary.rush { background: rgba(11, 13, 15, .55); border-color: var(--signal); color: var(--signal); }
+.btn.primary.rush:hover { background: rgba(255, 179, 71, .14); border-color: var(--signal-hot); color: var(--signal-hot); }
+.btn.primary.rush:focus-visible { outline-color: var(--signal); }
 .btn.small { min-height: 34px; font-size: 12px; padding: 1px 14px 0; }
 .m-actions.col .btn { text-align: left; padding-left: 18px; }
 .menu button:focus-visible, .menu input:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
@@ -322,6 +327,7 @@ kbd { display: inline-block; font: 500 10px/1 var(--f-mono); color: var(--bone);
   .m-word { font-size: clamp(52px, 20vw, 150px) !important; }
   .m-eyebrow { font-size: 11px; letter-spacing: .2em; }
   .m-actions .btn.primary { flex: 1 1 100%; }
+  .m-actions .btn.primary.mode { flex: 1 1 calc(50% - 5px); min-width: 0; padding-left: 10px; padding-right: 10px; letter-spacing: .08em; font-size: 16px; }
   .m-actions:not(.col) .btn:not(.primary) { flex: 1 1 0; padding-left: 8px; padding-right: 8px; }
   .m-card { padding: 22px 20px 20px; }
   .comms-t { font-size: 17px; }

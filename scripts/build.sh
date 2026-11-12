@@ -14,7 +14,7 @@ if [ "$MODE" = "raw" ]; then
   GAME="src/game/raw/02-render.raw.js src/game/raw/03-textures.raw.js src/game/raw/03-props.raw.js src/game/raw/04-level.raw.js src/game/raw/05-backdrop.raw.js src/game/raw/06-sea.raw.js src/game/raw/07-player-fx.raw.js src/game/raw/08-weapons.raw.js src/game/raw/09-game-ui.raw.js"
   ENTRY="src/game/raw/99-entry.raw.js"
 else
-  GAME="src/game/02-render.js src/game/03-textures.js src/game/03-props.js src/game/04-level.js src/game/05-backdrop.js src/game/06-sea.js src/game/07-player-fx.js src/game/08-weapons.js src/game/09-game-ui.js"
+  GAME="src/game/02-render.js src/game/03-textures.js src/game/03-props.js src/game/04-level.js src/game/05-backdrop.js src/game/06-sea.js src/game/07-player-fx.js src/game/08b-gundata.js src/game/08c-sounddata.js src/game/08-weapons.js src/game/09-game-ui.js"
   ENTRY="src/game/99-entry.js"
 fi
 

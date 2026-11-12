@@ -1978,7 +1978,7 @@ async function dm(i) {
             kind: "pac9",
             ammo: Gv,
             magSize: Gv,
-            reserve: -1,
+            reserve: Gv * 4,
             state: "idle",
             ads: 0,
             spread: .0125,
@@ -2001,7 +2001,7 @@ async function dm(i) {
                 k.reload = null, k.reloadW = 0, k.rackW = 0
             },
             addAmmo(Me) {
-                ve.reserve >= 0 && (ve.reserve += Me)
+                ve.reserve += Me
             },
             setWetness(Me) {
                 Wv.value = Math.max(0, Math.min(1, +Me || 0))
@@ -2014,7 +2014,7 @@ async function dm(i) {
         };
 
     function _e() {
-        ve.ammo = Gv, ve.reserve = -1, ve.state = "idle", ve.ads = 0, Object.assign(k, {
+        ve.ammo = Gv, ve.reserve = Gv * 4, ve.state = "idle", ve.ads = 0, Object.assign(k, {
             cooldown: 0,
             prevFire: !1,
             dryDone: !1,
@@ -2052,7 +2052,7 @@ async function dm(i) {
     }
 
     function Fe() {
-        if (k.reload || ve.ammo >= ve.magSize || ve.reserve === 0) return !1;
+        if (k.reload || ve.ammo >= ve.magSize || ve.reserve <= 0) return !1;
         let Me = ve.ammo <= 0;
         return k.reload = {
             t: 0,
@@ -2137,8 +2137,8 @@ async function dm(i) {
                 }), !0) : !1;
             if (Vt("magout", me) && (k.bump.v -= .25), Pt > .86 && !Je.f.fresh && (Je.f.fresh = 1, d.visible = !0), Vt("magin", ee)) {
                 k.bump.v += .55;
-                let Tt = ve.reserve < 0 ? ve.magSize - ve.ammo : Math.min(ve.magSize - ve.ammo, ve.reserve);
-                ve.ammo += Tt, ve.reserve >= 0 && (ve.reserve -= Tt), Je.empty || (k.boltLocked = !1)
+                let Tt = Math.min(ve.magSize - ve.ammo, ve.reserve);
+                ve.ammo += Tt, ve.reserve -= Tt, Je.empty || (k.boltLocked = !1)
             }
             Pt >= 1.5 && !Je.f.tap && (Je.f.tap = 1, k.bump.v += .4), Je.empty && (Pt >= B && (nn = Pt < P ? Yo((Pt - B) / (P - B)) : Pt < V ? 1 : Math.max(0, 1 - (Pt - V) / .035)), Vt("bolt", V) && (k.boltLocked = !1, k.bump.v += .3, k.kZ.v -= .5)), le(Je.empty ? ue : $, Pt), q.position.copy(Y), q.quaternion.copy(L), Pt >= me && Pt < ee ? (Z.copy(L).multiply(R), f.quaternion.copy(Z), f.position.copy(p).sub(j.p).applyQuaternion(Z).add(Y)) : (f.quaternion.identity(), f.position.copy(p));
             let ss = Yo(Pt / .3),
@@ -2156,7 +2156,7 @@ async function dm(i) {
                 for (; k.cooldown <= 0 && ve.ammo > 0 && Je < 3;) Be(), k.cooldown += 60 / O_, Je++
             } else k.dryDone || (k.dryDone = !0, i.events.emit("weapon:dry", {
                 w: "pac9"
-            }), k.bump.v -= .08, ve.reserve !== 0 && (k.autoReload = .32));
+            }), k.bump.v -= .08, ve.reserve > 0 && (k.autoReload = .32));
         k.cooldown < 0 && (k.cooldown = Math.max(k.cooldown, -.001)), k.t - k.lastShot > .24 && (k.burst > 0 && (k.recPhase = ae() * 6.28), k.burst = 0), k.bloom = Math.max(0, k.bloom - Me * 1.5), k.t - k.lastShot > .11 && k.t - k.lastShot < .11 + Me * 1.5 && k.heat > .4 && (k.smoke = Math.min(1.6, k.heat * 1.3)), k.smoke > 0 && (k.smoke -= Me, k.smokeTick -= Me, k.smokeTick <= 0 && i.fx && i.fx.smoke && (k.smokeTick = .085, Re(We), i.fx.smoke(We, {
             size: .1 + k.smoke * .06,
             life: 1.3,
@@ -2303,7 +2303,8 @@ var DGTypes = {
             kind: "pac9",
             name: "几猫九式突击步枪",
             mag: 30,
-            reserve: -1,
+            reserve: 120,
+            cat: "long",
             rpm: 720,
             hold: "auto",
             damage: 26,
@@ -2333,7 +2334,8 @@ var DGTypes = {
             kind: "deagle",
             name: "沙漠之鹰",
             mag: 7,
-            reserve: -1,
+            reserve: 28,
+            cat: "pistol",
             rpm: 210,
             hold: "semi",
             damage: 55,
@@ -2364,7 +2366,8 @@ var DGTypes = {
             kind: "awp",
             name: "AWP 狙击步枪",
             mag: 10,
-            reserve: -1,
+            reserve: 40,
+            cat: "long",
             rpm: 45,
             hold: "bolt",
             damage: 110,
@@ -2395,7 +2398,8 @@ var DGTypes = {
             kind: "mp5",
             name: "MP5 冲锋枪",
             mag: 30,
-            reserve: -1,
+            reserve: 120,
+            cat: "long",
             rpm: 800,
             hold: "auto",
             damage: 22,
@@ -2426,7 +2430,8 @@ var DGTypes = {
             kind: "uzi",
             name: "Uzi 冲锋枪",
             mag: 25,
-            reserve: -1,
+            reserve: 100,
+            cat: "long",
             rpm: 950,
             hold: "auto",
             damage: 17,
@@ -2456,7 +2461,116 @@ var DGTypes = {
     },
     dgLerp = (i, e, t) => i + (e - i) * t,
     dgClamp = (i, e, t) => i < e ? e : i > t ? t : i,
-    dgModels = {};
+    dgModels = {},
+    dgGundataCount = 0,
+    /* 集装箱刷枪上限：47 点全放会常驻 47 模型+47 光柱，取最底层点中随机 ≤12 个 */
+    dgContainerMax = 12,
+    /* v3（spec §2）：GUNDATA 全量并入注册表（kind=slug）。
+       同名冲突以既有 5 款为准；缺字段按 cat 兜底（long→槽1 / pistol→槽2）。
+       08b-gundata.js 由构建插在本文件之前，运行时是全局 var；node --check 阶段不存在也安全（typeof 探测）。 */
+    dgMergeGundata = () => {
+        let src = typeof GUNDATA == "object" && Array.isArray(GUNDATA) ? GUNDATA : [];
+        for (let g of src) {
+            if (!g || !g.slug || DGTypes[g.slug]) continue;
+            let cat = g.cat === "pistol" ? "pistol" : "long";
+            DGTypes[g.slug] = {
+                kind: g.slug,
+                name: g.name || g.slug,
+                mag: Math.max(1, g.mag | 0 || 30),
+                reserve: Math.max(4, (g.mag | 0 || 30) * 4),
+                cat: cat,
+                rpm: Math.max(30, g.rpm | 0 || 600),
+                hold: g.fire === "semi" || g.fire === "bolt" ? g.fire : "auto",
+                damage: Math.max(1, +g.damage || 25),
+                range: Math.max(30, +g.range || 200),
+                adsFov: Math.max(12, Math.min(70, +g.adsFov || 52)),
+                reloadT: Math.max(.8, +g.reloadT || 2.1),
+                reloadE: Math.max(1, +g.reloadE || (Math.max(.8, +g.reloadT || 2.1)) * 1.3),
+                bloom: +g.bloom >= 0 ? +g.bloom : .15,
+                rc: +g.rc > 0 ? +g.rc : 1,
+                bloomDecay: 1.5,
+                base: cat === "pistol" ? .016 : .013,
+                adsB: cat === "pistol" ? .0012 : .0015,
+                heat: cat === "pistol" ? .09 : .05,
+                hipP: cat === "pistol" ? [.135, -.158, -.3] : [.13, -.15, -.32],
+                hipR: [.03, .06, -.02],
+                adsP: cat === "pistol" ? [0, -.104, -.2] : [0, -.108, -.26],
+                adsR: [0, 0, 0],
+                reloadP: [0, -.09, .05],
+                reloadR: [-.55, .12, -.18],
+                scaleLen: Math.max(.18, Math.min(.6, +g.scaleLen || (cat === "pistol" ? .28 : .4))),
+                model: g.model || "assets/models/v3/" + g.slug + ".glb",
+                sfx: null,
+                __dgData: !0
+            };
+            dgGundataCount++
+        }
+        return Object.keys(DGTypes).length
+    },
+    dgTypeCount = dgMergeGundata();
+/* v3（spec §2）：SOUNDDATA 查表（shot/reload/bolt/dry 数组，多文件=变体），缺项走 fallback 按 cat+fire 回退。
+   注册进 Go 的条目用「打开时取通道」的 gen：首次播放才真正 fetch+decode（懒加载），失败静默降级合成音。 */
+function dgSfxPlan(slug) {
+    let T = DGTypes[slug];
+    if (!T) return null;
+    let sd = typeof SOUNDDATA == "object" && SOUNDDATA ? SOUNDDATA : null,
+        entry = sd && sd[slug] || null,
+        fb = sd && sd.fallback || null,
+        pick = arr => Array.isArray(arr) && arr.length ? arr.slice() : null,
+        catShot = fb ? (cat => cat === "pistol" ? pick(fb.pistol_shot) : (T.hold === "bolt" ? pick(fb.sniper_shot) : pick(fb.smg_shot) || pick(fb.long_shot)))(T.cat) : null;
+    return {
+        shot: entry && pick(entry.shot) || catShot || null,
+        reload: entry && pick(entry.reload) || (fb && pick(fb.reload)) || null,
+        bolt: entry && pick(entry.bolt) || (fb && pick(fb.bolt)) || null,
+        dry: entry && pick(entry.dry) || (fb && pick(fb.pistol_shot)) || null
+    }
+}
+function dgRegisterGo(slug, name, files, synthKind, ctx) {
+    if (!ctx || typeof Go != "object" || Go[name]) return;
+    let chans = [],
+        started = !1,
+        failed = !1,
+        gen = (sr, seed, variant) => {
+            /* 懒加载：注册时不 fetch，首次 gen 调用（即首播）才拉文件解码；
+               多文件 = 变体，按 seed 选一个拉；到位前/失败时回合成音（dgSynth），静默降级。 */
+            if (!started && !failed) {
+                started = !0;
+                let one = files[Math.abs(seed | 0) % files.length];
+                fetch(one).then(r => {
+                    if (!r.ok) throw new Error("http " + r.status);
+                    return r.arrayBuffer()
+                }).then(buf => ctx.decodeAudioData(buf)).then(dec => {
+                    chans.push(dec.getChannelData(0).slice())
+                }).catch(() => {
+                    failed = !0
+                })
+            }
+            return chans.length ? chans[variant % chans.length] : dgSynth(sr, synthKind)
+        };
+    Go[name] = {
+        gen: gen,
+        n: 1,
+        sr: ctx.sampleRate,
+        peak: .97,
+        bus: "near",
+        max: 5,
+        pri: 9
+    }
+}
+function dgAudioV3(i) {
+    let e = i.audio && i.audio.ctx;
+    if (!e || typeof Go != "object") return;
+    for (let slug in DGTypes) {
+        /* 既有 5 款走 v2 音频链（dgAudio 的 pistol_* 合成注册 + 扩展名容错 + rifle_shot 内置合成），不覆盖 */
+        if (!DGTypes[slug].__dgData) continue;
+        let plan = dgSfxPlan(slug);
+        if (!plan) continue;
+        plan.shot && dgRegisterGo(slug, slug + "_shot", plan.shot, "shot", e);
+        plan.reload && dgRegisterGo(slug, slug + "_reload", plan.reload, "click", e);
+        plan.bolt && dgRegisterGo(slug, slug + "_bolt", plan.bolt, "click", e);
+        plan.dry && dgRegisterGo(slug, slug + "_dry", plan.dry, "click", e)
+    }
+}
 
 function dgSmooth(i, e, t, n) {
     return i + (e - i) * (1 - Math.exp(-t * n))
@@ -2722,21 +2836,25 @@ function dgPlaceholder(i) {
     }
 }
 
+/* v3：占位几何的资源回收（替换正式模型后清理 GPU 侧 buffer，防 64 枪懒加载堆积显存） */
+function dgDispose(root) {
+    let mats = new Set,
+        geos = new Set;
+    root.traverse(o => {
+        o.isMesh && (o.geometry && geos.add(o.geometry), o.material && (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => mats.add(m)))
+    });
+    for (let g of geos) g.dispose && g.dispose();
+    for (let m of mats) m.dispose && m.dispose()
+}
+
 /* 泛化视模工厂（spec §1/§5.3）：按 DGTypes[kind] 构建——deagle 与原实现数值逐一等价（手感保持），
    awp/mp5/uzi 走 dgGlb 加载（失败回退占位）；扛法 auto 连发循环 / semi·bolt 边沿 + 冷却，
    bolt（awp）在 emit 后延时播 sfx.bolt（60/45≈1.33s 冷却由 rpm 天然给出） */
-async function dgBuild(i, kind) {
-    let T = DGTypes[kind];
-    if (!T) throw new Error("[dg] unknown kind: " + kind);
+/* 同步视模装配核心：拿 t（{root,info}，GLB 或占位）、建枪口火光/动画状态/实例门面。
+   v3 懒加载的关键——先用占位盒体同步建出「接口完全一致」的实例，模型后台到位后 dgSwapModel 原位替换几何。 */
+function dgAssemble(i, kind, T, t) {
     let e = new lt.Group;
     e.name = "viewmodel-" + kind;
-    let t = null;
-    if (T.model) try {
-        t = await dgGlb(T.model, T.scaleLen || .3)
-    } catch (n) {
-        console.warn("[dg] glb load failed (" + T.model + "), placeholder fallback:", n)
-    }
-    t || (t = dgPlaceholder(T));
     e.add(t.root);
     let n = t.info,
         s = document.createElement("canvas");
@@ -2753,7 +2871,7 @@ async function dgBuild(i, kind) {
         }));
     a.name = "dg-flash", a.position.set(n.muzzle[0], n.muzzle[1], n.muzzle[2]), a.renderOrder = 10, a.visible = !1, e.add(a), e.traverse(l => {
         l.layers && l.layers.set(zc)
-    }), i.camera.add(e), e.visible = !1, dgModels[kind] = n;
+    }), i.camera.add(e), e.visible = !1;
     /* 换弹相位按 deagle 实测比例从总时长推导（.2558/.6744/.7535×reloadT、.8596×reloadE ≈ .55/1.45/1.62/2.45） */
     let PH = {
             mgO: .2558 * T.reloadT,
@@ -2819,7 +2937,7 @@ async function dgBuild(i, kind) {
     }
 
     function b() {
-        if (l.reload || w.ammo >= w.magSize) return !1;
+        if (l.reload || w.ammo >= w.magSize || w.reserve <= 0) return !1;
         let C = w.ammo <= 0;
         return l.reload = {
             t: 0,
@@ -2836,7 +2954,7 @@ async function dgBuild(i, kind) {
     function dy() {
         l.dryDone || (l.dryDone = !0, i.events.emit("weapon:dry", {
             w: kind
-        }), l.bump.v -= .08, l.autoReload = .32)
+        }), l.bump.v -= .08, w.reserve > 0 && (l.autoReload = .32))
     }
 
     function m() {
@@ -2890,9 +3008,9 @@ async function dgBuild(i, kind) {
                     w: kind
                 }), !0) : !1;
             if (O("magout", PH.mgO) && (l.bump.v -= .25), O("magin", PH.mgI)) {
-                l.bump.v += .5, w.ammo = w.magSize;
-                let P = l;
-                M.empty || (P.boltLocked = !1)
+                l.bump.v += .5;
+                let P = Math.min(w.magSize - w.ammo, w.reserve);
+                w.ammo += P, w.reserve -= P, M.empty || (l.boltLocked = !1)
             }
             O("tap", PH.tp) && (l.bump.v += .35), M.empty && O("bolt", PH.bk) && (l.boltLocked = !1, l.bump.v += .3, l.kZ.v -= .5);
             let R = Yo(N / .3),
@@ -2912,7 +3030,7 @@ async function dgBuild(i, kind) {
                 } else dy()
             } else if (G && l.cooldown <= 0) {
                 if (w.ammo > 0) {
-                    if (m(), l.cooldown = 60 / T.rpm, T.hold === "bolt" && T.sfx && T.sfx.bolt && i.audio && i.audio.play) i.audio.play(T.sfx.bolt, {
+                    if (m(), l.cooldown = 60 / T.rpm, T.hold === "bolt" && i.audio && i.audio.play) i.audio.play(kind + "_bolt", {
                         gain: .85,
                         delay: .35,
                         jitter: .06
@@ -2955,7 +3073,7 @@ async function dgBuild(i, kind) {
     }
 
     function _() {
-        w.ammo = T.mag, w.state = "idle", w.ads = 0, w.spread = T.base, Object.assign(l, {
+        w.ammo = T.mag, w.reserve = T.reserve, w.state = "idle", w.ads = 0, w.spread = T.base, Object.assign(l, {
             t: 0,
             cooldown: 0,
             prevFire: !1,
@@ -3006,26 +3124,78 @@ async function dgBuild(i, kind) {
         cancelReload() {
             l.reload = null, l.reloadW = 0, l.rackW = 0
         },
-        addAmmo() {},
+        addAmmo(C) {
+            w.reserve += C
+        },
         setWetness() {},
         snap() {
             l.adsLin = i.input.ads ? 1 : 0;
             for (let C of ["kZ", "kP", "kY", "kR", "swY", "swP", "jY", "jP", "bump"]) l[C].x = 0, l[C].v = 0;
             l.sprintT = i.player.sprinting ? 1 : 0
-        }
+        },
+        /* v3 懒加载：模型后台加载完成后原位替换几何（保 position/rotation、火光吸附新枪口），实例引用不变 */
+        dgSwapModel(nt) {
+            let old = t.root;
+            e.remove(old), dgDispose(old), e.add(nt.root), t = nt, n = nt.info, w.info = n, dgModels[kind] = n;
+            let mz = n.muzzle;
+            a.position.set(mz[0], mz[1], mz[2]);
+            let wasVis = e.visible;
+            e.traverse(C => {
+                C.layers && C.layers.set(zc)
+            }), e.visible = wasVis;
+            try {
+                e.updateMatrix(), e.traverse(C => {
+                    C.isMesh && C.geometry && C.geometry.computeBoundingSphere && C.geometry.computeBoundingSphere()
+                })
+            } catch {}
+        },
+        dgIsPlaceholder: () => t.info && t.info.names && t.info.names[0] === "placeholder:" + kind
     };
     return _(), w
 }
 
-/* 门面（spec §2/§3/§4）：双槽位 + Q 快切 + F 捡起 + G 丢弃 + 地面武器实体。
-   五种实例启动时全部构建（切换/捡取发生在同步 update 内，必须预先存在）；
-   每 kind 全场唯一（槽位+地面守恒 5 把），实例按 kind 复用、弹药随实体走。 */
+/* v3：占位盒体实例立即建（同步）→ 后台 dgGlb 加载 → dgSwapModel 原位替换。
+   返回的 Promise 永不 reject（失败保持占位，游戏不崩）。 */
+function dgBuildLazy(i, kind) {
+    let T = DGTypes[kind];
+    if (!T) return Promise.reject(new Error("[dg] unknown kind: " + kind));
+    let w = dgAssemble(i, kind, T, dgPlaceholder(T));
+    return dgModels[kind] || (dgModels[kind] = w.info), new Promise(resolve => {
+        if (!T.model) return resolve(w);
+        dgGlb(T.model, T.scaleLen || .3).then(t => {
+            w.dgSwapModel(t)
+        }).catch(n => {
+            console.warn("[dg] glb load failed (" + T.model + "), keeping placeholder:", n && n.message || n)
+        }).then(() => resolve(w))
+    })
+}
+
+/* 旧异步工厂保留：直接等 GLB 到位再返回（失败回退占位）。boot 预建的枪用它。 */
+async function dgBuild(i, kind) {
+    let T = DGTypes[kind];
+    if (!T) throw new Error("[dg] unknown kind: " + kind);
+    let t = null;
+    if (T.model) try {
+        t = await dgGlb(T.model, T.scaleLen || .3)
+    } catch (n) {
+        console.warn("[dg] glb load failed (" + T.model + "), placeholder fallback:", n)
+    }
+    t || (t = dgPlaceholder(T));
+    let w = dgAssemble(i, kind, T, t);
+    return dgModels[kind] = t.info, w
+}
+
+/* 门面（spec §2/§3/§4/§6/§7）：双槽位 + Q 快切 + F 捡起 + G 丢弃 + 地面武器实体。
+   v3：boot 只预建 pac9/deagle（既有 awp/mp5/uzi 保留预建，防行为回退）；GUNDATA 新枪懒加载——
+   首次被需要（刷出地面武器/捡起/切换）时 dgEnsure：同步建盒体占位实例（接口同正式），
+   后台 dgGlb 加载完成后 dgSwapModel 原位替换几何；失败保持占位，游戏不崩。
+   每 kind 全场唯一（槽位+地面守恒），实例按 kind 复用、弹药随实体走。 */
 async function dgn(i) {
     let inst = {
         pac9: await dm(i)
     };
     await Promise.all(["deagle", "awp", "mp5", "uzi"].map(k => dgBuild(i, k).then(w => inst[k] = w).catch(err => console.error("[dg] build failed:", k, err))));
-    dgAudio(i);
+    dgAudio(i), dgAudioV3(i);
     let slots = [{
             slot: 1,
             kind: "pac9",
@@ -3041,7 +3211,8 @@ async function dgn(i) {
         buf = 0,
         pickups = [],
         beamG = null,
-        beamM = null;
+        beamM = null,
+        dgLoading = {};
     for (let s of slots) s.kind && !inst[s.kind] && (s.kind = null, s.name = "—");
 
     function kindAt(n) {
@@ -3049,8 +3220,26 @@ async function dgn(i) {
         return s && s.kind && inst[s.kind] ? s.kind : null
     }
 
+    /* v3（spec §7/§2）：槽位按 cat 决定——long→槽1 主武器、pistol→槽2 副武器（替换 deagle 特判） */
     function slotFor(k) {
-        return k === "deagle" ? 2 : 1
+        let T = DGTypes[k];
+        return T && T.cat === "pistol" ? 2 : 1
+    }
+
+    /* v3（spec §6）：懒加载入口——kind 已在注册表、实例还没建时调用。
+       同步先放盒体占位实例（保证同帧内 switchTo/pickup 拿到可用对象），
+       后台 dgBuildLazy 加载完成原位替换；返回当前实例（可能是占位）。 */
+    function dgEnsure(kind) {
+        if (!DGTypes[kind] || inst[kind]) return inst[kind] || null;
+        let w = dgAssemble(i, kind, DGTypes[kind], dgPlaceholder(DGTypes[kind]));
+        inst[kind] = w, dgModels[kind] = dgModels[kind] || w.info;
+        if (!dgLoading[kind]) {
+            dgLoading[kind] = !0;
+            dgBuildLazy(i, kind).then(full => {
+                inst[kind] = full, applyVis()
+            }).catch(() => {})
+        }
+        return w
     }
 
     function active() {
@@ -3059,7 +3248,7 @@ async function dgn(i) {
     }
 
     function syncSlot(s) {
-        s.kind = s.kind && inst[s.kind] ? s.kind : null, s.name = s.kind ? DGTypes[s.kind].name : "—"
+        s.kind = s.kind && (inst[s.kind] || DGTypes[s.kind]) ? s.kind : null, s.name = s.kind ? DGTypes[s.kind].name : "—"
     }
 
     function setNoFire(v) {
@@ -3081,7 +3270,7 @@ async function dgn(i) {
 
     function switchTo(n) {
         if (n === cur || !kindAt(n)) return !1;
-        lastSlot = cur, cur = n;
+        lastSlot = cur, cur = n, dgEnsure(slots[n - 1].kind);
         for (let k in inst) inst[k] && inst[k].cancelReload && inst[k].cancelReload();
         return applyVis(), buf = .32, setNoFire(!0), click(), !0
     }
@@ -3113,10 +3302,11 @@ async function dgn(i) {
         return m.position.y = .6, m
     }
 
-    function spawnPickup(kind, x, z, mag, maxY) {
-        let T = DGTypes[kind],
-            src = inst[kind];
-        if (!T || !src || !src.root) return null;
+    function spawnPickup(kind, x, z, mag, maxY, reserve) {
+        let T = DGTypes[kind];
+        if (!T) return null;
+        let src = dgEnsure(kind);
+        if (!src || !src.root) return null;
         let gy = 0;
         try {
             i.physics && i.physics.groundHeight && (gy = i.physics.groundHeight(x, z, maxY == null ? 1.2 : maxY))
@@ -3144,6 +3334,7 @@ async function dgn(i) {
             kind: kind,
             name: T.name,
             mag: Math.max(0, Math.min(T.mag, mag | 0)),
+            reserve: Math.max(0, reserve == null ? T.reserve : Math.min(T.reserve, reserve | 0)),
             pos: new lt.Vector3(x, gy, z),
             pivot: pivot,
             spin: spin
@@ -3156,9 +3347,58 @@ async function dgn(i) {
         ix >= 0 && pickups.splice(ix, 1), p.pivot.parent && p.pivot.parent.remove(p.pivot)
     }
 
+    /* v3（spec §4）：集装箱刷枪——读 level.placed 账本（{name,x,y,z,yaw}，name 含 "container"）。
+       只取最底层（y<0.05）可步行到达的点位；每点随机一把（全池=内置5款+GUNDATA，排除起手 pac9），
+       满 5 弹匣，贴地 + 沿箱长轴偏移防插壁；上限 dgContainerMax 防光柱/模型常驻爆量。
+       「每点随机一把」用去重洗牌：先全池洗牌再按序消费，避免 rand 连撞同 kind 静默跳点。 */
+    function dgContainerSpots() {
+        let placed = i.level && i.level.placed;
+        if (!Array.isArray(placed)) return [];
+        return placed.filter(p => p && typeof p.name == "string" && p.name.indexOf("container") >= 0 && (p.y || 0) < .05)
+    }
+    function dgPool(rand) {
+        let pool = [];
+        for (let k in DGTypes) k !== "pac9" && pool.push(k);
+        if (pool.length > 1 && rand)
+            for (let a = pool.length - 1; a > 0; a--) {
+                let b = Math.floor(rand() * (a + 1)),
+                    t = pool[a];
+                pool[a] = pool[b], pool[b] = t
+            }
+        return pool.length ? pool : ["deagle", "awp", "mp5", "uzi"]
+    }
+    function dgContainerSize(name) {
+        let L = name.indexOf("container40") === 0 ? 12.19 : 6.06;
+        return {
+            L: L,
+            W: 2.44
+        }
+    }
+    function spawnContainers(rand) {
+        let spots = dgContainerSpots();
+        if (!spots.length) return 0;
+        rand = rand || Math.random;
+        let pool = dgPool(rand),
+            maxN = Math.min(spots.length, dgContainerMax);
+        for (let s = 0; s < maxN; s++) {
+            let p = spots[s],
+                size = dgContainerSize(p.name),
+                yaw = p.yaw || 0,
+                ux = Math.cos(yaw),
+                uz = -Math.sin(yaw),
+                off = size.L * .28 * (rand() * 2 - 1),
+                wx = p.x + ux * off,
+                wz = p.z + uz * off,
+                kind = pool[s % pool.length];
+            spawnPickup(kind, wx, wz, DGTypes[kind].mag, Math.max((p.y || 0) + .1, 1.2), DGTypes[kind].reserve)
+        }
+        return pickups.length
+    }
+
     function spawnInitial() {
         for (let p of pickups.slice()) i.scene.remove(p.pivot);
-        pickups.length = 0, spawnPickup("awp", 8, 2, DGTypes.awp.mag), spawnPickup("mp5", -4, -12, DGTypes.mp5.mag), spawnPickup("uzi", 18, 4, DGTypes.uzi.mag)
+        pickups.length = 0, spawnPickup("awp", 8, 2, DGTypes.awp.mag), spawnPickup("mp5", -4, -12, DGTypes.mp5.mag), spawnPickup("uzi", 18, 4, DGTypes.uzi.mag),
+        spawnContainers()
     }
 
     function nearestPickup() {
@@ -3167,8 +3407,9 @@ async function dgn(i) {
         let best = null,
             bd = 2.5;
         for (let p of pickups) {
-            let d = Math.hypot(p.pos.x - pp.x, p.pos.z - pp.z);
-            d <= bd && (bd = d, best = p)
+            let d = Math.hypot(p.pos.x - pp.x, p.pos.z - pp.z),
+                dy = Math.abs((p.pos.y || 0) - (pp.y || 0));
+            d <= bd && dy < 2.2 && (bd = d, best = p)
         }
         return best ? {
             p: best,
@@ -3185,16 +3426,18 @@ async function dgn(i) {
             px = n.p.pos.x,
             pz = n.p.pos.z,
             py = n.p.pos.y,
-            bm = n.p.mag;
+            bm = n.p.mag,
+            br = n.p.reserve;
         removePickup(n.p);
         let old = ts.kind && inst[ts.kind] ? inst[ts.kind] : null;
         if (old) {
-            let oldAmmo = old.ammo;
-            old.cancelReload && old.cancelReload(), old.reset && old.reset(), spawnPickup(ts.kind, px, pz, oldAmmo, py + 1)
+            let oldAmmo = old.ammo,
+                oldRes = old.reserve;
+            old.cancelReload && old.cancelReload(), old.reset && old.reset(), spawnPickup(ts.kind, px, pz, oldAmmo, py + 1, oldRes)
         }
-        ts.kind = bk, syncSlot(ts);
+        dgEnsure(bk), ts.kind = bk, syncSlot(ts);
         let ni = inst[bk];
-        return ni && (ni.cancelReload && ni.cancelReload(), ni.reset && ni.reset(), ni.ammo = bm), tgt !== cur ? switchTo(tgt) : (applyVis(), buf = .32, setNoFire(!0), click(), !0)
+        return ni && (ni.cancelReload && ni.cancelReload(), ni.reset && ni.reset(), ni.ammo = bm, ni.reserve = br), tgt !== cur ? switchTo(tgt) : (applyVis(), buf = .32, setNoFire(!0), click(), !0)
     }
 
     function doDrop() {
@@ -3202,18 +3445,32 @@ async function dgn(i) {
         if (!s.kind || !inst[s.kind]) return !1;
         let k = s.kind,
             mag = inst[k].ammo,
+            res = inst[k].reserve,
             pp = i.player && i.player.pos;
-        inst[k].cancelReload && inst[k].cancelReload(), inst[k].reset && inst[k].reset(), spawnPickup(k, pp ? pp.x : 0, pp ? pp.z : 0, mag, (pp ? pp.y : 0) + 1.5), s.kind = null, syncSlot(s);
+        inst[k].cancelReload && inst[k].cancelReload(), inst[k].reset && inst[k].reset(), spawnPickup(k, pp ? pp.x : 0, pp ? pp.z : 0, mag, (pp ? pp.y : 0) + 1.5, res), s.kind = null, syncSlot(s);
         let other = cur === 1 ? 2 : 1;
         if (kindAt(other)) return switchTo(other);
         return applyVis(), buf = .32, setNoFire(!0), click(), !0
     }
 
+    /* v3（spec §4）：resetAll 按 i.mode 分支——
+       campaign：槽1 pac9 + 槽2 deagle + 既有 3 固定点 + 集装箱随机枪；
+       rush：槽1 空、槽2 仅 deagle（5 弹匣）+ 3 固定点 + 集装箱随机枪（额外效果只有这两点归 08）。
+       容器点位在 reset 重刷（deploy/retry/redeploy 都走这里，确保每次开局弹药满、点位重排）。 */
     function resetAll() {
+        let mode = i.mode === "rush" ? "rush" : "campaign";
         for (let k in inst) inst[k] && inst[k].reset && inst[k].reset();
-        slots[0].kind = inst.pac9 ? "pac9" : null, syncSlot(slots[0]);
-        slots[1].kind = inst.deagle ? "deagle" : null, syncSlot(slots[1]);
-        cur = 1, lastSlot = 2, buf = 0, setNoFire(!1), spawnInitial(), applyVis()
+        if (mode === "rush") {
+            slots[0].kind = null, syncSlot(slots[0]);
+            if (!inst.deagle) dgEnsure("deagle");
+            slots[1].kind = inst.deagle ? "deagle" : null, syncSlot(slots[1]);
+            cur = 2, lastSlot = 1
+        } else {
+            slots[0].kind = inst.pac9 ? "pac9" : null, syncSlot(slots[0]);
+            slots[1].kind = inst.deagle ? "deagle" : null, syncSlot(slots[1]);
+            cur = 1, lastSlot = 2
+        }
+        buf = 0, setNoFire(!1), spawnInitial(), applyVis()
     }
     dgModels.pac9 = {
         muzzle: mi.muzzle,
@@ -3362,6 +3619,17 @@ async function dgn(i) {
     return window.__DG = {
         types: DGTypes,
         models: dgModels,
+        get mode() {
+            return i.mode === "rush" ? "rush" : "campaign"
+        },
+        get gundata() {
+            return {
+                count: dgGundataCount,
+                types: dgTypeCount,
+                loading: Object.keys(dgLoading),
+                placeholders: Object.keys(inst).filter(k => inst[k] && inst[k].dgIsPlaceholder && inst[k].dgIsPlaceholder())
+            }
+        },
         get slots() {
             return slots.map(s => ({
                 slot: s.slot,
@@ -3374,6 +3642,7 @@ async function dgn(i) {
                 kind: p.kind,
                 name: p.name,
                 mag: p.mag,
+                reserve: p.reserve,
                 pos: [p.pos.x, p.pos.y, p.pos.z]
             }))
         },

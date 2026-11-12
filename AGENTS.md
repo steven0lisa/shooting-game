@@ -48,7 +48,9 @@ shooting-game/
 | 05 | 05-backdrop.js | `mv` (create: pv, showcase: MR) | 背景：岸桥吊机/货轮/小艇/天际线/海鸥顶点动画/几何工具箱（⚠️ 原命名 materials，实为 backdrop） | notes/05-backdrop.md |
 | 06 | 06-sea.js | `vv` (create: O1, showcase: BR) | 海面 Gerstner 波/平面反射/湿地 apron/雨系统（室内剔除）/thunder 事件 | notes/06-sea.md |
 | 07 | 07-player-fx.js | `Sv` (create: Cf, showcase: JR) | 输入三重降级/玩家控制器/战斗判定/粒子 FX 池/弹壳物理/WebAudio 合成引擎（⚠️ 名字只覆盖一半） | notes/07-player-fx.md |
-| 08 | 08-weapons.js | `Xv` (create: dgn, showcase: PC) | 武器系统 v2：DGTypes 注册表（pac9/deagle/awp/mp5/uzi）+ 双槽位/捡丢/Q 快切/地面武器光柱 + 最小 GLB 加载器 + 门面（slots/pickup/adsFov） | notes/08-weapons.md + weapons-v2-spec.md |
+| 08 | 08-weapons.js | `Xv` (create: dgn, showcase: PC) | 武器系统 v3：DGTypes（内置 5 款）+ GUNDATA 60 款数据驱动 + 双槽位/捡丢/Q/集装箱刷枪 + GLB 懒加载占位换装 + 门面 | notes/08-weapons.md + weapon-v2/v3-spec.md |
+| 08b | 08b-gundata.js | `GUNDATA`（纯数据） | 60 款枪械数值表（slug/cat/mag/rpm/damage/range/adsFov/bloom/rc/reload/scaleLen） | notes/roster-built.md |
+| 08c | 08c-sounddata.js | `SOUNDDATA`（纯数据） | 逐枪音效表 + fallback 六类共用（文件在 assets/audio/v3/） | notes/sound-built.md |
 | 09 | 09-game-ui.js | `ex` (TUNE: Ui, create: Em, showcase: VC) | 游戏主控：状态机/任务目标/敌人 AI（hound/gull）/rig 骨骼/HUD/菜单/结算 + 启动器主循环 `QC` | notes/09-game-ui.md |
 | — | 99-entry.js | — | IIFE 尾：`QC().catch(...)` 启动调用 | — |
 

@@ -1,0 +1,199 @@
+# 武器 v3 落地名册（WP1a 产出）
+
+> 生成日期 2026-11-13。模型来源 [3dassets.dev Mega Weapon Pack](https://3dassets.dev/packs/mega-weapon-pack)（CC0 1.0，**无需署名**）。
+> 数值来源：PF Gun List（145 把）优先 + adatechnology-game-kit `firearms.json`（115 款）补缺/校验。
+> 对应产物：`src/game/08b-gundata.js`（GUNDATA 60 条）、`assets/models/v3/*.glb`（60 个文件）。
+
+## 结论数字
+
+| 项 | 值 |
+|---|---|
+| 收录总数 | **60**（任务允许 55~62；包内可用 64，排除 4 件与既有实现重复） |
+| 手枪（副武器） | **15** |
+| 长枪（主武器） | **45** = 步枪/卡宾 20 + DMR 7 + 狙击 9 + 冲锋/PDW 9 |
+| 模型总体积 | **76.12 MB**（60 个 GLB，均通过 `file` = glTF binary v2 与 GLB 头校验） |
+| 单文件范围 | 0.55 ~ 3.26 MB（最大 = AW50 带镜反器材版 33453，3.26 MB / 95.7k 面） |
+| 三角面范围 | 23.6k ~ 95.7k / 件（均值 47.4k，**比既有 4 把 GLB 重**，地面掉落建议 LOD/缩小） |
+| 参数来源分布 | PF Gun List 21 / PF+kit 交叉校验 27 / 纯 kit 补缺 12（**PF 参与 48 条，kit 参与 39 条**） |
+
+## 排除项（4 件，与既有定制实现重复）
+
+| pack id | 模型名 | 排除理由 |
+|---|---|---|
+| 33303 | Folding Stock SMG | Uzi 造型（折叠托 9mm），与既有 `uzi.glb` 定制实现重复 |
+| 33443 | Folding Stock SMG, Suppressed | 同上（消音版，连带排除） |
+| 33335 | Chassis Bolt Sniper | AWP/AI 底盘系栓狙，与既有 `awp.glb` 重复 |
+| 33449 | Chassis Sniper, Scoped | 同上（带镜版，连带排除） |
+
+> 另 9 件霰弹枪（spec §1 标注「备选不做」）、7 件机枪、6 件发射器、1 件信号枪按任务书排除。
+
+## 名册表
+
+> 列说明：MB = 模型文件体积；dmg = 单发伤害；rpm = 每分钟射速；mag = 弹匣；rng = 有效射程(m)；
+> adsFov 全部 52 者省略（仅 DMR/狙击列 18~24）。
+
+### 手枪（副武器 · 15 把）
+
+| # | slug | 中文名 | 模型（pack 原名 / id） | MB | dmg | rpm | mag | rng | ads | bloom/rc | 换弹 T/E | scaleLen | 参数来源 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `glock17` | Glock 17 手枪 | Service Pistol (33296) | 0.67 | 36.8 | 300 | 17 | 120 | 52 | 0.24 / 1.05 | 1.90 / 2.50 | 0.28 | PF GLOCK 17(34)→36.8 / kit Glock 17（17 发、光学板） |
+| 2 | `m17` | M17 执勤手枪 | Service Pistol, Duty Loadout (33455) | 0.87 | 38 | 270 | 17 | 130 | 52 | 0.25 / 1.10 | 1.95 / 2.55 | 0.29 | PF M9→38.0 / kit SIG P320；Duty Loadout（RX 光学+枪灯） |
+| 3 | `glock19` | Glock 19 手枪 | Compact Pistol (33290) | 0.64 | 36.8 | 300 | 15 | 110 | 52 | 0.23 / 1 | 1.80 / 2.40 | 0.26 | PF GLOCK 17(34)→36.8 / kit Glock 19 |
+| 4 | `glock19x` | Glock 19X 战术手枪 | Compact Pistol, Carry Loadout (33458) | 0.90 | 37.6 | 280 | 15 | 120 | 52 | 0.24 / 1.05 | 1.85 / 2.45 | 0.27 | PF GLOCK 17→37.6 / kit Glock 19；Carry Loadout（反射瞄+激光） |
+| 5 | `p365` | SIG P365 微型手枪 | Subcompact Pistol (33292) | 0.62 | 33.2 | 300 | 10 | 95 | 52 | 0.22 / 1 | 1.70 / 2.30 | 0.22 | kit Glock 19 近似 −10%（10 发短握把） |
+| 6 | `glock34` | Glock 34 长滑套手枪 | Long Slide Pistol (33293) | 0.72 | 37.6 | 300 | 17 | 135 | 52 | 0.25 / 1.10 | 1.90 / 2.50 | 0.30 | PF GLOCK 17→37.6 / 真实 G34 长滑套+补偿口 |
+| 7 | `glock34sd` | Glock 34 消音手枪 | Long Slide Pistol, Suppressed (33456) | 1.15 | 37.8 | 260 | 17 | 140 | 52 | 0.26 / 1.15 | 1.95 / 2.55 | 0.30 | PF GLOCK 17→37.8；Suppressed Loadout |
+| 8 | `glock18` | Glock 18 冲锋手枪 | Machine Pistol (33294) | 0.83 | 34.9 | 1100 | 19 | 110 | 52 | 0.28 / 1.35 | 1.90 / 2.50 | 0.26 | PF GLOCK 18(30)→34.9 / kit Glock 18 1200 rpm |
+| 9 | `glock18c` | Glock 18C 战术冲锋手枪 | Machine Pistol, Fitted (33457) | 1.25 | 35.7 | 1100 | 30 | 120 | 52 | 0.29 / 1.40 | 1.95 / 2.60 | 0.27 | PF GLOCK 18→35.7；Fitted（30 发扩容+消音+枪灯） |
+| 10 | `mark4` | Ruger Mark IV 目标手枪 | Target Pistol (33291) | 0.70 | 28 | 300 | 10 | 120 | 52 | 0.22 / 1 | 1.80 / 2.40 | 0.30 | PF ZIP 22(.22LR 15)→28 下界 / 牛管+拇指托+可调照门（.22 目标手枪造型） |
+| 11 | `webley` | Webley Mk VI 左轮 | Break Top Revolver (33299) | 0.62 | 47 | 170 | 6 | 120 | 52 | 0.26 / 1.20 | 2 / 2.65 | 0.30 | PF 1858 NEW ARMY(60)→49 / .455 古董左轮（顶折式） |
+| 12 | `python` | Colt Python 左轮 | Magnum Revolver (33297) | 0.62 | 47 | 180 | 6 | 145 | 52 | 0.26 / 1.25 | 2.10 / 2.75 | 0.30 | PF MP412 REX .357(56)→47 / kit Colt Python |
+| 13 | `sw686` | S&W 686 左轮 | Service Revolver (33295) | 0.61 | 47 | 180 | 6 | 145 | 52 | 0.25 / 1.20 | 2.10 / 2.75 | 0.29 | PF MP412 REX .357→47 / kit S&W 686（7 发） |
+| 14 | `coltsaa` | Colt SAA 单动左轮 | Single Action Revolver (33300) | 0.56 | 58 | 150 | 6 | 150 | 52 | 0.27 / 1.35 | 2.10 / 2.75 | 0.30 | PF JURY(.45 LC 80)→58 上界 / 单动结构 |
+| 15 | `sw642` | S&W 642 短管左轮 | Snub Revolver (33298) | 0.55 | 41 | 170 | 5 | 95 | 52 | 0.24 / 1.15 | 1.95 / 2.60 | 0.22 | kit Taurus 82(.38 Spl) / PF 左轮基准 |
+
+### 步枪 / 卡宾（主武器 · 20 把）
+
+| # | slug | 中文名 | 模型（pack 原名 / id） | MB | dmg | rpm | mag | rng | ads | bloom/rc | 换弹 T/E | scaleLen | 参数来源 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `ak47` | AK-47 突击步枪 | Wood Stock Rifle (33322) | 1.29 | 34 | 600 | 30 | 290 | 52 | 0.17 / 1.25 | 2.40 / 3 | 0.44 | PF AK47(42)→34 / kit AK-47；SFX 同枪 |
+| 2 | `akms` | AKMS 折叠托突击步枪 | Folding Stock Rifle (33323) | 0.89 | 33 | 600 | 30 | 280 | 52 | 0.17 / 1.25 | 2.30 / 2.90 | 0.42 | PF AKM(40)→33 / kit AKM |
+| 3 | `ak74` | AK-74 突击步枪 | Standard Assault Rifle (33318) | 1.08 | 27 | 650 | 30 | 280 | 52 | 0.14 / 1.05 | 2.40 / 3 | 0.46 | PF AK74(34)→27 / kit AK-74 |
+| 4 | `ak74n` | AK-74N 巡逻型突击步枪 | Standard Rifle, Patrol Loadout (33439) | 1.66 | 27.2 | 640 | 30 | 290 | 52 | 0.15 / 1.10 | 2.45 / 3.05 | 0.46 | PF AK74→27.2；Patrol Loadout（3× 棱镜+前握把+枪灯） |
+| 5 | `m16a1` | M16A1 步枪 | Carry Handle Rifle (33329) | 1.10 | 25.4 | 800 | 30 | 270 | 52 | 0.14 / 1.05 | 2.10 / 2.75 | 0.47 | PF M16A3(32)→25.4 / kit Colt M16A2 |
+| 6 | `m16a4` | M16A4 步枪 | Long Barrel Rifle (33320) | 1.64 | 28 | 300 | 30 | 300 | 52 | 0.13 / 1 | 2.10 / 2.70 | 0.47 | PF M16A4(35)→28 / kit Colt M16A2 |
+| 7 | `mk12` | MK12 SPR 特等射手步枪 | Long Barrel Rifle, Suppressed (33444) | 2.17 | 28.6 | 290 | 30 | 330 | 52 | 0.16 / 1.15 | 2.20 / 2.80 | 0.47 | PF M16A4→28.6；4× 光学+消音（5.56 SPR） |
+| 8 | `m4a1` | M4A1 卡宾枪 | Short Carbine (33316) | 1.10 | 27.1 | 780 | 30 | 250 | 52 | 0.15 / 1.05 | 2.20 / 2.80 | 0.40 | PF M4A1(34)→27.1 / kit Colt M4A1；SFX AR-15 |
+| 9 | `mk18` | MK18 CQBR 近战卡宾枪 | Short Carbine, CQB Loadout (33437) | 1.42 | 28 | 950 | 30 | 180 | 52 | 0.18 / 1.30 | 2.10 / 2.70 | 0.38 | PF M4(35)→28；CQB Loadout（10.3in 短管） |
+| 10 | `hk416` | HK416 卡宾枪 | Piston Carbine (33319) | 1.17 | 26.3 | 850 | 30 | 250 | 52 | 0.15 / 1.10 | 2.20 / 2.80 | 0.40 | PF HK416(31)→26.3 / kit HK416（短行程活塞） |
+| 11 | `hk416a5` | HK416A5 夜战型 | Piston Carbine, Night Loadout (33440) | 1.65 | 26.6 | 850 | 30 | 255 | 52 | 0.16 / 1.15 | 2.25 / 2.85 | 0.40 | PF HK416→26.6；Night Loadout（夜视瞄+灯+激光+消音） |
+| 12 | `fal` | FAL 50.00 战斗步枪 | Battle Rifle (33324) | 1.34 | 32.3 | 700 | 20 | 320 | 52 | 0.18 / 1.30 | 2.50 / 3.10 | 0.46 | PF FAL 50.00(41)→32.3 / kit FN FAL |
+| 13 | `galil` | Galil ARM 突击步枪 | Heavy Tri Rail Carbine (33330) | 1.17 | 32 | 650 | 35 | 270 | 52 | 0.18 / 1.30 | 2.50 / 3.05 | 0.43 | kit 7.62×39 基准 ≈ PF AKM(40)→32 / 真实 35 发 |
+| 14 | `honeybadger` | Honey Badger 消音步枪 | Integrally Suppressed Rifle (33326) | 1.57 | 23.7 | 800 | 30 | 210 | 52 | 0.15 / 1 | 2.20 / 2.80 | 0.39 | PF HONEY BADGER(.300 BLK，30)→23.7；SFX Savage 10 |
+| 15 | `win94` | Winchester 1894 杠杆步枪 | Lever Action Rifle (33342) | 1.25 | 30 | 110 | 7 | 200 | 52 | 0.16 / 1.20 | 2.50 / 3.10 | 0.48 | kit Winchester 1894(.30-30，7 发) / PF HENRY 45-70 类比 |
+| 16 | `aug` | Steyr AUG A1 突击步枪 | Bullpup Rifle (33321) | 1.19 | 23.7 | 680 | 30 | 290 | 52 | 0.14 / 1 | 2.30 / 2.90 | 0.44 | PF AUG A1(30)→23.7 / kit Steyr AUG A1 |
+| 17 | `auga2` | Steyr AUG A2 突击步枪 | Bullpup Rifle, Optic Loadout (33441) | 1.51 | 27.1 | 680 | 30 | 285 | 52 | 0.15 / 1.05 | 2.35 / 2.95 | 0.44 | PF AUG A2(34)→27.1；Optic Loadout（全息+前握把+枪灯） |
+| 18 | `aks74u` | AKS-74U 短突击步枪 | Tanker Carbine (33327) | 0.94 | 29.7 | 735 | 30 | 180 | 52 | 0.18 / 1.30 | 2.20 / 2.80 | 0.38 | PF KRINKOV(37)→29.7 / kit AKS-74U |
+| 19 | `rfb` | Kel-Tec RFB 无托战斗步枪 | Bullpup Battle Rifle (33325) | 1.33 | 32.7 | 280 | 20 | 380 | 52 | 0.18 / 1.30 | 2.50 / 3.10 | 0.45 | kit FN SCAR-H(.308 2876 J) / PF FAL(41)→32.7 |
+| 20 | `k31` | K31 直拉栓步枪 | Straight Pull Rifle (33341) | 1.33 | 34 | 55 | 6 | 380 | 52 | 0.18 / 1.20 | 2.50 / 3.10 | 0.48 | kit .30-06 栓动基准 / 7.5×55 Swiss（3600 J）；直拉枪机循环快 |
+
+### 精确射手 / DMR（主武器 · 7 把）
+
+| # | slug | 中文名 | 模型（pack 原名 / id） | MB | dmg | rpm | mag | rng | ads | bloom/rc | 换弹 T/E | scaleLen | 参数来源 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `svd` | SVD 德拉贡诺夫狙击步枪 | Battle Marksman Rifle (33332) | 1.22 | 33.5 | 300 | 10 | 420 | **20** | 0.18 / 1.30 | 2.55 / 3.15 | 0.48 | PF DRAGUNOV SVDS(70)→33.5 / kit SVD Dragunov |
+| 2 | `sr25` | Knight's SR-25 精确步枪 | Marksman Rifle (33328) | 1.39 | 34 | 300 | 20 | 410 | **22** | 0.17 / 1.25 | 2.50 / 3.10 | 0.48 | PF MK11(45)→34 / kit Knight's SR-25 |
+| 3 | `m110` | M110 SASS 精确步枪 | Semi Auto Marksman Rifle (33331) | 1.39 | 32.3 | 300 | 20 | 400 | **22** | 0.16 / 1.20 | 2.45 / 3.05 | 0.47 | kit M14 EBR(7.62×51 3504 J) / PF MK11(45)→32.3 |
+| 4 | `mk11` | MK11 精确步枪（8× 光学） | Marksman Rifle, Scoped (33442) | 1.92 | 34 | 280 | 20 | 430 | **20** | 0.18 / 1.30 | 2.55 / 3.15 | 0.48 | PF MK11(45)→34；Scoped（8× 镜+消音） |
+| 5 | `m110t` | M110 战术型（8× 光学） | Semi Auto Marksman, Scoped (33448) | 1.92 | 33.6 | 280 | 20 | 420 | **20** | 0.17 / 1.25 | 2.50 / 3.10 | 0.47 | PF MK11 同族（SR-25 系 7.62）；Scoped（8× 镜+消音+激光） |
+| 6 | `sa58` | SA58 SPR 精确步枪 | Battle Rifle, Marksman Loadout (33438) | 1.99 | 34 | 280 | 20 | 400 | **20** | 0.18 / 1.30 | 2.55 / 3.15 | 0.46 | PF SA58 SPR(48)→34；Marksman Loadout（8× 镜+消音+激光） |
+| 7 | `tavor7` | IWI Tavor 7 无托精确步枪 | Bullpup Marksman Rifle (33333) | 1.47 | 34 | 280 | 20 | 360 | **22** | 0.17 / 1.22 | 2.45 / 3.05 | 0.45 | PF AG-3(.308，45)→34 / 无托半自动 |
+
+### 狙击 · 栓动（主武器 · 9 把）
+
+| # | slug | 中文名 | 模型（pack 原名 / id） | MB | dmg | rpm | mag | rng | ads | bloom/rc | 换弹 T/E | scaleLen | 参数来源 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `trg42` | Sako TRG-42 栓动狙击 | Heavy Barrel Sniper (33337) | 1.37 | 120 | 45 | 5 | 650 | **18** | 0.38 / 2.05 | 2.90 / 3.50 | 0.58 | PF TRG-42(100)→120 / kit Sako TRG-42（.338 LM） |
+| 2 | `mrad` | Barrett MRAD 栓动狙击 | Folding Chassis Sniper (33336) | 1.42 | 108 | 50 | 5 | 600 | **18** | 0.36 / 1.85 | 2.90 / 3.50 | 0.56 | PF AWM(.338 LM，82)→108 / kit Barrett MRAD（折叠托） |
+| 3 | `m40a5` | M40A5 消音狙击步枪 | Suppressed Bolt Sniper (33338) | 1.45 | 98 | 52 | 5 | 540 | **20** | 0.33 / 1.65 | 2.90 / 3.50 | 0.53 | kit M24 SWS(7.62×51) / PF REM700→98；一体消音 |
+| 4 | `tac50` | McMillan TAC-50 反器材狙击 | Anti Materiel Rifle (33339) | 2.74 | 116 | 45 | 5 | 620 | **18** | 0.38 / 2 | 2.90 / 3.50 | 0.58 | PF HECATE II(97)→116 / .50 BMG 29in 重管 |
+| 5 | `aw50` | AW50 反器材步枪（8× 光学） | Anti Materiel Rifle, Scoped (33453) | 3.26 | 114 | 45 | 5 | 630 | **18** | 0.37 / 2 | 2.90 / 3.50 | 0.58 | PF HECATE II→114；Scoped（8× 镜+激光测距） |
+| 6 | `m95` | Barrett M95 无托反器材 | Bullpup Anti Materiel Rifle (33340) | 1.31 | 118 | 45 | 5 | 600 | **18** | 0.37 / 2 | 2.90 / 3.50 | 0.56 | PF HECATE II(.50 BMG)→118 / 无托构型 |
+| 7 | `kar98k` | Kar98k 栓动步枪 | Wood Stock Bolt Sniper (33334) | 1.26 | 97.6 | 50 | 5 | 430 | **20** | 0.32 / 1.60 | 2.80 / 3.40 | 0.52 | PF K14(.308，68)→97.6 / kit Mauser Kar98k 7.92×57 |
+| 8 | `mosin` | Mosin-Nagant PU 狙击步枪 | Wood Sniper, Scoped (33450) | 1.56 | 92 | 65 | 5 | 480 | **22** | 0.30 / 1.60 | 2.80 / 3.40 | 0.53 | PF MOSIN NAGANT(60)→92 / kit Mosin 91/30；SFX 同枪 |
+| 9 | `k31zfk` | K31 狙击型（ZfK 4× 光学） | Straight Pull Rifle, Scoped (33452) | 1.86 | 99 | 50 | 6 | 440 | **22** | 0.30 / 1.60 | 2.90 / 3.50 | 0.52 | kit .30-06 栓动基准 / 7.5×55（3800 J）；4× 镜+消音 |
+
+### 冲锋枪 / PDW（主武器 · 9 把）
+
+| # | slug | 中文名 | 模型（pack 原名 / id） | MB | dmg | rpm | mag | rng | ads | bloom/rc | 换弹 T/E | scaleLen | 参数来源 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | `augpara` | AUG A3 Para 冲锋枪 | Bullpup SMG (33305) | 0.94 | 21.2 | 780 | 25 | 140 | 52 | 0.14 / 0.70 | 2 / 2.60 | 0.34 | PF AUG A3 PARA(34)→21.2 / kit Steyr AUG 循环 |
+| 2 | `mpx` | SIG MPX 冲锋枪 | Carbine Length SMG (33308) | 1.11 | 20 | 850 | 30 | 165 | 52 | 0.12 / 0.62 | 2.10 / 2.70 | 0.36 | kit SIG MPX(9×19) ≈ PF MP5(34)→20 |
+| 3 | `mpxc` | SIG MPX 战术冲锋枪 | Carbine SMG, Fitted (33445) | 1.43 | 20.3 | 900 | 30 | 170 | 52 | 0.12 / 0.64 | 2.05 / 2.65 | 0.33 | kit SIG MPX；Fitted（反射瞄+前握把+枪灯） |
+| 4 | `m1a1` | Thompson M1A1 冲锋枪 | Classic Straight Magazine SMG (33306) | 1.20 | 23.3 | 725 | 30 | 160 | 52 | 0.16 / 0.78 | 2.30 / 2.80 | 0.38 | PF TOMMY GUN(37)→23.3 / kit Thompson M1A1；SFX 同枪 |
+| 5 | `ppsh41` | PPSh-41 冲锋枪 | Drum Fed SMG (33309) | 1.40 | 15 | 1000 | 71 | 150 | 52 | 0.16 / 0.72 | 2.30 / 2.80 | 0.37 | PF PPSH-41(25)→15 下界 / kit PPSh-41；SFX 同枪 |
+| 6 | `apc9sd` | B&T APC9 SD 消音冲锋枪 | Integrally Suppressed SMG (33302) | 1.06 | 16 | 900 | 30 | 150 | 52 | 0.12 / 0.60 | 2 / 2.60 | 0.33 | kit B&T MP9 近似（9mm 亚音速）/ PF MP5 基准→16 |
+| 7 | `rattler` | SIG MCX Rattler PDW | PDW With Brace (33307) | 0.99 | 18.5 | 800 | 30 | 130 | 52 | 0.14 / 0.70 | 2 / 2.60 | 0.30 | PF HONEY BADGER(.300 BLK，30)→18.5 / 5.5in 短管 |
+| 8 | `rattlerf` | SIG MCX Rattler 战术型 | PDW, Fitted (33447) | 1.49 | 18.8 | 800 | 30 | 135 | 52 | 0.14 / 0.72 | 2.05 / 2.65 | 0.31 | PF HONEY BADGER→18.8；Fitted（反射瞄+消音+激光） |
+| 9 | `sten` | Sten Mk II 冲锋枪 | Side Magazine SMG (33304) | 0.87 | 22.6 | 550 | 32 | 145 | 52 | 0.15 / 0.72 | 2.20 / 2.80 | 0.36 | PF L2A3(36)→22.6 / 侧置弹匣 32 发 |
+
+## 数值刻度与映射规则（供后续模块核对）
+
+| 类别 | damage | rpm | adsFov | bloom | rc | reloadT | reloadE | scaleLen |
+|---|---|---|---|---|---|---|---|---|
+| 手枪 | 28~58 | 150~300（左轮 150~180）/ 冲锋手枪 1100 | 52 | .22~.29 | 1.0~1.4 | 1.7~2.1 | 2.3~2.75 | .22~.30 |
+| 冲锋/PDW | 15~24 | 550~1100 | 52 | .12~.16 | .60~.78 | 2.0~2.3 | 2.6~2.8 | .30~.38 |
+| 步枪/卡宾 | 22~34 | 600~950（半自动 290~300） | 52 | .13~.18 | 1.0~1.30 | 2.1~2.5 | 2.7~3.1 | .38~.48 |
+| DMR | 30~34 | 280~300 | 20~22 | .16~.18 | 1.20~1.30 | 2.45~2.55 | 3.05~3.15 | .45~.48 |
+| 狙击（栓动） | 85~120 | 45~65 | 18~22 | .30~.38 | 1.6~2.05 | 2.8~2.9 | 3.4~3.5 | .50~.58 |
+
+- **PF 伤害线性缩放**：手枪取 PF 近距伤害在 [15, 80] 区间内线性映射到 [28, 58]；步枪 [28, 42] → [22, 34]；冲锋 [25, 38] → [15, 24]；狙击 [50, 100] → [85, 120]。保序不保绝对值。
+- **PF 无同名的 20 把**（如 K31、Galil、M14、RFB、Tavor、Win1894、MPX、APC9、Sten 等）：按 kit `action.muzzleSpeed × calibers.bulletGrams` 动能与同族 PF 枪对齐，或按口径族基准取中值。
+- **rpm**：kit `action.rpm` 优先（真实循环率）；kit 的栓动 `73.17` 是循环限制值，本表按枪机行程微调为 45~65（重反器材更慢）。
+- **mag**：真实弹匣优先；Loadout 变体按模型实际弹匣（Glock18C 30 发、MPX Fitted 30 发等）。
+- **敌人 HP 基准**：hound 140 / gull 45（`09-game-ui.js` Pn.hp / Gt.hp），据此校准"几发击杀"。
+
+## 命名与 slug 约定
+
+- slug = 真枪名小写无分隔（`ak47` / `glock17` 类）；同枪有 Loadout 版的用后缀区分（`glock19` / `glock19x`、`m110` / `m110t`、`rattler` / `rattlerf`）。
+- slug 同时是：模型文件名（`assets/models/v3/<slug>.glb`）、GUNDATA 键、SOUNDDATA 键（WP1b 共用此键）。
+- 与国际惯例枪名对应关系（易混处）：
+  - `ak74` ← pack「Standard Assault Rifle」（标准 AK 系 5.45 造型）
+  - `ak47` ← pack「Wood Stock Rifle」（木托 AK 造型）
+  - `m16a1` ← pack「Carry Handle Rifle」（提把 M16 造型）
+  - `m16a4` ← pack「Long Barrel Rifle」（20in 枪管 M16A4 造型）
+  - `svd` ← pack「Battle Marksman Rifle」（木托半自动狙击，SVD 造型）
+  - `sr25` ← pack「Marksman Rifle」（SR-25 系精确射手）
+  - `m110` ← pack「Semi Auto Marksman Rifle」（AR 系 7.62 DMR，M110 造型）
+  - `tavor7` ← pack「Bullpup Marksman Rifle」（无托 .308 精确射手）
+  - `trg42` ← pack「Heavy Barrel Sniper」（重管栓狙，TRG-42 造型）
+
+## slug 与音效表（WP1b / 08c-sounddata.js）的对齐
+
+本表 slug 是 SOUNDDATA 的唯一键。实测当前 `08c-sounddata.js` 有 23 个逐枪条目 + fallback，直接同 slug 命中 **3** 条：
+
+> 注：音效侧有 `m1911` 条目，但本表**没有** M1911——包内 Target Pistol（33291）实为 .22 口径牛管目标手枪（木拇指托+可调照门），命名 `mark4`（Ruger Mark IV 造型）更准确，故音效侧 `m1911` 在本表无对应（可留作 WP2 后续手工加枪或改挂 `mark4`）。
+
+| GUNDATA slug | SOUNDDATA 条目 | 说明 |
+|---|---|---|
+| `ak47` | `ak47` | 同枪（AK-47 全套 51 条） |
+| `ppsh41` | `ppsh41` | 同枪（PPSh 36 条） |
+| `sw642` | `sw642` | 同枪（S&W 642 28 条） |
+
+**其余 20 个音效条目遵循 SFX 库原生的枪型名**，与本表 slug 不一致（属音效侧设计选择，不是缺陷），WP1b 接入时应按后续别名表匹配，或由 08-weapons 的 `dgSfxPlan()` 走 `fallback`（按 cat+fire 四类共用音，已就绪）：
+
+| SFX 库条目 | 建议对齐的本表 slug |
+|---|---|
+| `ar15` | `m4a1`（5.56 卡宾通用族，AR-15 音也是 M16A1/M16A4/M4A1 的最佳源） |
+| `mosinnagant` | `mosin` |
+| `carlgustavm45` | `mpx` / `mpxc`（9mm SMG 类，M45 是 9mm SMG 通用源） |
+| `waltherppq` | `glock17` / `glock19` / `p365`（9mm 击针手枪通用源） |
+| `sks` / `ruger1022` / `rugermarkiii` / `rugersinglesix` / `springfield1917` / `arisaka` / `tikka` / `savage10` / `marlin336` / `model1894` / `bersa380` / `charlesdaly` / `model12` / `mossberg` / `nova` | 本表无对应造型（包内无 SKS/春田/有坂/鲁格 .22/杠杆枪除 Win94 外等），**只能走 fallback** |
+
+> 结论：**完备度不因此降级**——`fallback` 提供 `long_shot / pistol_shot / smg_shot / sniper_shot / reload / bolt` 六类共用音，60 把全部有声音；同枪优先命中 3 把 + 可借音 3 族。
+
+## 遗漏 / 降级项
+
+1. **未收录 4 件**（见上方排除表）——均为既有实现的重复造型，非遗漏。
+2. **裸枪 / 带配件版的混用（实测 49 裸枪 + 11 带配件版）**——任务书要求「同枪有 Loadout/Scoped 版的取裸枪」，但**裸枪数量不足**：按 survey 的四个分组统计，**纯裸枪可用仅 42 件**：手枪 11 / 步枪 15 / 狙击 9（裸枪 10 件中 Chassis Bolt Sniper 属 AWP 系已排除）/ 冲锋 7（裸枪 8 件中 Folding Stock 属 Uzi 系已排除）。42 < 任务书目标 60±，**要凑数必然要借同枪变体**——手枪侧尤其明显（裸枪只有 11，够不到 15）。**处置**：
+   - **手枪 15 = 11 裸枪 + 4 同枪变体**（`m17`←Service Pistol Duty、`glock19x`←Compact Carry、`glock34sd`←Long Slide Suppressed、`glock18c`←Machine Pistol Fitted）。变体差异：模型自带瞄具/枪灯/消音/扩容弹匣，数值按模型实际配置微调（弹匣 30 发、瞄准更快），slug 加后缀区分，不与裸枪同名。**无同枪重复模型**。
+   - **长枪 45 = 34 裸枪 + 11 变体**：变体全部对应**独立的真实枪型差异**而非纯配件（`mk18`←Short Carbine CQB = 10.3in 短管型、`mk12`←Long Barrel Suppressed = 18in SPR、`auga2`←Bullpup Rifle Optic = AUG A2 光学型、`hk416a5`←Piston Carbine Night = HK416A5、`ak74n`←Standard Rifle Patrol = AK-74N 棱镜型、`sa58`←Battle Rifle Marksman = SA58 SPR、`mk11`/`m110t`←Marksman/Semi Auto Scoped = 带 8× 镜型号、`aw50`←Anti Materiel Scoped、`mosin`←Wood Sniper Scoped、`k31zfk`←Straight Pull Scoped、`mpxc`←Carbine SMG Fitted、`rattlerf`←PDW Fitted）。这些在真实世界里就是不同型号（SPR/CQBR/A2/A5/N 型/Scoped 版），作为独立武器收录合理；**若后续 WP2 要求"每把都能挂配件"，这 11 把的变体性可由 08-weapons 的瞄具系统覆盖，届时可退回裸枪模型**。
+3. **无 5.7mm 枪族**：包内无 Five-seveN/P90 造型，PF 相关枪（FIVE SEVEN / P90 / PS90）无法映射，未收录。
+4. **无霰弹枪/机枪/发射器**：按任务书排除；`doc/` 侧可后续单列。
+5. **`.50 BMG` 与 `.408 CheyTac` 参数为手填**：kit `calibers.json` 有 50bmg/408cheytac 口径但部分枪 `muzzleSpeed` 缺失，反器材三把（TAC-50/AW50/M95）按 PF HECATE II/BFG 50 伤害区间取 114~118，物理值参考公开弹道。
+
+## 复用与校验命令
+
+```bash
+# 语法（不通过不许提交）
+node --check src/game/08b-gundata.js
+
+# 名册/文件一致性（60 条、无重复 slug、模型全部存在）
+node -e 'const fs=require("fs"),vm=require("vm");const c={};vm.createContext(c);
+vm.runInContext(fs.readFileSync("src/game/08b-gundata.js","utf8").replace("var GUNDATA","GUNDATA")+";GUNDATA",c);
+const a=c.GUNDATA;console.log(a.length,new Set(a.map(g=>g.slug)).size,
+ a.filter(g=>!fs.existsSync(g.model)).map(g=>g.slug));'
+
+# 模型完整性（每个文件必须是 glTF binary v2）
+for f in assets/models/v3/*.glb; do file "$f" | grep -q "glTF binary" || echo "BAD $f"; done
+```

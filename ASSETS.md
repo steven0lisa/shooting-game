@@ -57,3 +57,14 @@
 - 仓库即 [Free Firearms SFX Library KickStarter（Ben Jaszczak）](https://www.kickstarter.com/projects/bjjaszcz/the-firearm-sound-library/description) 的镜像，`LICENSE` 为 CC0 1.0，原始录音以 Master Tracks（未处理干声）与 Prepared SFX（处理版）发布。
 - 处理：六个文件仅做**首尾静音裁剪**（保留约 30 ms 头部余量），未改音高/时长/响度，源文件均可按上表 URL 取回。
 - 游戏内按文件名注册（契约见 `notes/weapons-v2-spec.md` §6）：`awp_shot` / `awp_bolt` / `mp5_shot` / `mp5_reload` / `uzi_shot` / `uzi_reload`。
+
+## 武器 3 扩展素材（v3 全量收录 60 把，2026-11-13）
+
+| 类别 | 作品 | 作者/来源 | 许可 |
+|---|---|---|---|
+| 3D 模型 ×60（assets/models/v3/） | Mega Weapon Pack | 3dassets.dev/packs/mega-weapon-pack | **CC0 1.0**（manifest 明示 attributionRequired: false，无需署名） |
+| 音效 ×167（assets/audio/v3/） | Free Firearms SFX Library | github.com/buddingmonkey/FreeFirearmsSFXLibrary（Ben Jaszczak/Kickstarter 镜像） | **CC0 1.0** |
+| 机构声备选 | adatechnology-game-kit 音频 | github.com/Andersonfrfilho/adatechnology-game-kit | CC0 子集（CREDITOS.md 逐文件标注） |
+
+- 武器数值参数参考（未含素材文件）：PF Gun List（gist DET171，无许可声明——仅取事实数值，文案全部重写）与 adatechnology-game-kit（MIT）物理参数。
+- 逐枪明细见 notes/roster-built.md（模型/参数）与 notes/sound-built.md（音效/借音矩阵）。
