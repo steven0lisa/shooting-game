@@ -13,7 +13,10 @@ var im = (i, e, t) => {
         return n > .15 && n < .95
     };
 
-function sm(i, e, t = 0, n = null) {
+/* 顶点风化上色器：3D 哈希噪声 → 明度浮动 ±10%，再按高频噪声超阈值给「锈斑」。
+   v3.1：新增可选第 5 参 w（锈斑暖度，默认 0）——不传时逐项算术与旧版完全一致（pac9 手感零变化），
+   传值时锈斑区按 R:0.45G:0.12B 的暖色偏移叠加，复刻 pac9 那种「偏暖锈斑」；GLB 平色枪用它补色相层次。 */
+function sm(i, e, t = 0, n = null, w = 0) {
     let s = i.attributes.position,
         o = i.attributes.normal,
         r = s.count,
@@ -22,15 +25,16 @@ function sm(i, e, t = 0, n = null) {
         let c = s.getX(l),
             u = s.getY(l),
             h = s.getZ(l),
-            f = .9 + .2 * im(Math.round(c * 70), Math.round(u * 70), Math.round(h * 70));
+            f = .9 + .2 * im(Math.round(c * 70), Math.round(u * 70), Math.round(h * 70)),
+            warm = 0;
         if (t > 0 && n && n(o.getX(l), o.getY(l), o.getZ(l))) {
             let p = im(Math.round(c * 300), Math.round(u * 300), Math.round(h * 300));
             {
                 let d = Math.max(0, p - .84) / .16;
-                f *= 1 + t * 1.6 * d * d
+                f *= 1 + t * 1.6 * d * d, w > 0 && (warm = w * d * d)
             }
         }
-        a[l * 3] = e[0] * f, a[l * 3 + 1] = e[1] * f, a[l * 3 + 2] = e[2] * f
+        a[l * 3] = e[0] * f + warm, a[l * 3 + 1] = e[1] * f + warm * .45, a[l * 3 + 2] = e[2] * f + warm * .12
     }
     return i.setAttribute("color", new et(a, 3)), i
 }
@@ -1644,16 +1648,23 @@ diffuseColor.rgb *= 1.0 - 0.18 * dWet;
 normal = dBump(normal, dHt + dDropH * 0.32);
 `;
 
-function Bf(i, e) {
-    return i.onBeforeCompile = t => {
-        t.uniforms.uKind = {
-            value: e
-        }, t.uniforms.uRain = Wv, t.vertexShader = t.vertexShader.replace("#include <common>", `#include <common>
+/* 细节 shader 的实际注入体（被 Bf 与 dgGlbMat 共用）：只改 shader 源码，不动材质 hook/缓存键。
+   注入顺序有讲究——本函数吃 `#include <roughnessmap_fragment>` / `#include <normal_fragment_maps>`
+   的锚点，03 的 h3 补丁会把这两个锚点整段替换掉，所以「先 detail、后 h3」才能两者共存（见 dgGlbMat）。 */
+function dgDetailInject(t, e) {
+    t.uniforms.uKind = {
+        value: e
+    }, t.uniforms.uRain = Wv, t.vertexShader = t.vertexShader.replace("#include <common>", `#include <common>
 varying vec3 vObjP; varying vec3 vWNrm; varying vec3 vONrm;`).replace("#include <begin_vertex>", `#include <begin_vertex>
 vObjP = position; vONrm = normal; vWNrm = normalize(mat3(modelMatrix) * normal);`), t.fragmentShader = t.fragmentShader.replace("#include <common>", `#include <common>
 ` + AC).replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
 ` + RC).replace("#include <normal_fragment_maps>", `#include <normal_fragment_maps>
 ` + CC)
+}
+
+function Bf(i, e) {
+    return i.onBeforeCompile = t => {
+        dgDetailInject(t, e)
     }, i.customProgramCacheKey = () => "pac9-detail-" + e, i
 }
 var gi = W,
@@ -2592,7 +2603,83 @@ function dgAudioV3(i) {
 function dgSmooth(i, e, t, n) {
     return i + (e - i) * (1 - Math.exp(-t * n))
 }
-async function dgGlb(i, dgLen = .3) {
+
+/* ============================================================ v3.1 GLB 枪材质/光影对齐 PAC-9（2026-11-13）
+   问题：v3 收录的 60 把 Mega Weapon Pack GLB 是平色 PBR、无贴图，裸 MeshStandardMaterial 呈塑料感。
+   做法：把每个 GLB 网格的「原材质亮度」映射到 03 材质库（i.mats.get）的三档真实材质，
+   再把几何铺上 sm 顶点风化 + 给材质复合注入 Bf 细节 shader（雨湿 Wv 顺带共享），阴影标志对齐 pac9。
+   ——pac9（程序化）完全不动；内置 deagle/awp/mp5/uzi 与 60 把 v3 枪都走 dgGlb，自动升级。 */
+/* 亮度分档（任务口径）：>0.42 gunmetal / 0.15~0.42 anodized_black / <0.15 rubber */
+var dgGlbBand = i => i > .42 ? "gunmetal" : i > .15 ? "anodized_black" : "rubber",
+    /* Bf 的 kind 粒度（沿用 pac9-detail-<kind> 缓存）：0=金属划痕/机加工纹（gunmetal、anodized_black）、2=聚合物颗粒（rubber） */
+    dgGlbKind = {
+        gunmetal: 0,
+        anodized_black: 0,
+        rubber: 2
+    },
+    /* 各档细节 scale（与 pac9 的 n 表同量级：gunmetal/anodized 2、rubber 4——橡胶件颗粒更细密） */
+    dgGlbScale = {
+        gunmetal: 2,
+        anodized_black: 2,
+        rubber: 4
+    },
+    /* GLB 材质对象缓存：60 把枪共用 3 个材质实例、2 个 program，避免每枪唯一 program 导致 shader 爆炸 */
+    dgGlbMatCache = {
+        ctx: null,
+        mats: {}
+    },
+    /* 材质诊断（window.__DG.materials）：每把已建枪 {matsUsed, weathered} */
+    dgMatInfo = {};
+
+/* 把 GLB 平色基色转成顶点色 tint：
+   ① 灰件（通道差 <0.04）→ 纯亮度系数 t=0.85+0.45*lum（灰件三通道相同），保留「同枪内不同件的明暗差」，
+      基准≈1.0 由 03 材质本色决定，不会把 anodized_black 那种近黑材质放大成灰；
+   ② 彩件（木托/沙色/绿件/红标记）→ 归一化到均值 1 保留色相，并叠加同一个亮度系数，
+      通道钳在 [0.7,1.25] 防纯色件（如 0.8,0,0）把材质染成荧光。
+   ③ 亮度低到分不出色相（lum<0.02）→ 白，交给材质本色。 */
+function dgGlbTint(i) {
+    let e = .299 * i[0] + .587 * i[1] + .114 * i[2],
+        mx = Math.max(i[0], i[1], i[2]),
+        mn = Math.min(i[0], i[1], i[2]),
+        t = Math.min(1.25, Math.max(.85, .85 + .45 * e));
+    if (!(e > .02)) return [1, 1, 1];
+    if (mx - mn < .04) return [t, t, t];
+    let s = t / e;
+    return [Math.min(1.25, Math.max(.7, i[0] * s)), Math.min(1.25, Math.max(.7, i[1] * s)), Math.min(1.25, Math.max(.7, i[2] * s))]
+}
+
+/* 取（并在首次取用时织入 detail 的）共用材质。材质本体来自 03 的 mats.get——三平面映射、MRT 烘焙 albedo/ORM、
+   SL_FX 雨湿全带，等价于 pac9 的 s=Me=>i.mats.get(Me,{triplanar:!0,vertexColors:!0,scale})。
+   ⚠️ 注入顺序必须「先 detail、后 03 的 h3」：两套补丁共用 #include <roughnessmap_fragment> /
+   <normal_fragment_maps> 两个锚点——detail 先在 include 之后插入自己的代码，h3 再替换 include 本身，
+   两段叠加生效；反过来 h3 先把锚点整段替换掉，detail 的注入就静默丢失（划痕/湿斑全没）。 */
+function dgGlbMat(i, e) {
+    if (dgGlbMatCache.ctx !== i) dgGlbMatCache.ctx = i, dgGlbMatCache.mats = {};
+    let t = dgGlbMatCache.mats[e];
+    if (t) return t;
+    let n = i.mats && i.mats.get ? i.mats.get(e, {
+        triplanar: !0,
+        vertexColors: !0,
+        scale: dgGlbScale[e] || 2
+    }) : null;
+    if (!n) return null;
+    if (n.userData.dgDetail === void 0) {
+        let s = n.onBeforeCompile,
+            ok = n.customProgramCacheKey,
+            o = dgGlbKind[e] || 0;
+        n.onBeforeCompile = r => {
+            dgDetailInject(r, o), s && s(r)
+        }, /* 缓存键 = 本档 kind + 03 原始键（原键含 SL_TINT/SL_TRIPLANAR/SL_FX 差异，不能丢，
+              否则 tint/defines 不同的材质会错串到同一个 program）。同 kind 同 set 的材质共享 program：
+              gunmetal 与 anodized_black 同为 kind 0 且 tint=1/均带三平面 → 合 1 个 program；rubber(kind 2) 另 1 个。
+              最终全批 64 把枪最多 2 个 GLB program，不会因「每枪唯一键」而 shader 爆炸。 */
+        n.customProgramCacheKey = () => "dg-glb-detail-" + o + "|" + (ok ? ok.call(n) : (n.userData.set || "-")), n.userData.dgDetail = o
+    }
+    /* 共享标记：dgDispose 见 userData.dgShared 不得 dispose——60 把枪共用一个实例，dispose 会连坐全部 */
+    return n.userData.dgShared = !0, dgGlbMatCache.mats[e] = n
+}
+
+async function dgGlb(i, dgLen = .3, ctx = null) {
     let e = await (await fetch(i)).arrayBuffer(),
         t = new DataView(e);
     if (t.getUint32(0, !0) !== 0x46546c67) throw new Error("[dg] not a glb file: " + i);
@@ -2672,26 +2759,59 @@ async function dgGlb(i, dgLen = .3) {
             u.push(null)
         } else u.push(null)
     }
+    /* v3.1：GLB 平色材质 → 03 材质库三档（dgGlbBand 亮度映射），并把「保留色相」的基色写进顶点色。
+       带贴图的 GLB（本批 64 个实测无，仅作兼容）仍走原贴图材质，避免平色映射吞掉贴图；
+       ctx 缺 mats（异常/无上下文路径）退回旧的裸 MeshStandardMaterial，行为与旧版一致。 */
     let h = (s.materials || []).map(f => {
         let p = f.pbrMetallicRoughness || {},
             d = p.baseColorFactor || [1, 1, 1, 1],
-            v = (d[0] + d[1] + d[2]) / 3 > .42,
-            g = new lt.MeshStandardMaterial({
-                color: v ? 0x3c434b : 0x191c21,
-                metalness: v ? .88 : .55,
-                roughness: v ? .38 : .62
-            });
-        return p.baseColorTexture && u[p.baseColorTexture.index] && (g.map = u[p.baseColorTexture.index], g.color.set(0xffffff)), g
+            lum = .299 * d[0] + .587 * d[1] + .114 * d[2],
+            band = dgGlbBand(lum),
+            tint = dgGlbTint(d),
+            map = p.baseColorTexture && u[p.baseColorTexture.index],
+            rec = {
+                band: band,
+                tint: tint,
+                styled: !1,
+                mat: null
+            };
+        if (map) rec.mat = new lt.MeshStandardMaterial({
+            color: 16777215,
+            metalness: .85,
+            roughness: .45,
+            map: map
+        });
+        else if (ctx && (rec.mat = dgGlbMat(ctx, band))) rec.styled = !0;
+        else rec.mat = new lt.MeshStandardMaterial({
+            color: lum > .42 ? 0x3c434b : 0x191c21,
+            metalness: lum > .42 ? .88 : .55,
+            roughness: lum > .42 ? .38 : .62
+        });
+        return rec
     });
-    h.length || h.push(new lt.MeshStandardMaterial({
-        color: 0x2c3238,
-        metalness: .8,
-        roughness: .45
-    }));
+    /* 整枪材质全落橡胶档（如 mp5 全材质亮度 <.15）时上修为阳极氧化黑，避免全枪橡皮感 */
+    h.length && h.every(r => r.band === "rubber") && h.forEach(r => {
+        r.band = "anodized_black";
+        let m2 = ctx && dgGlbMat(ctx, "anodized_black");
+        m2 && (r.mat = m2, r.styled = !0)
+    });
+    h.length || h.push({
+        band: "gunmetal",
+        tint: [1, 1, 1],
+        styled: !1,
+        mat: new lt.MeshStandardMaterial({
+            color: 0x2c3238,
+            metalness: .8,
+            roughness: .45
+        })
+    });
     let f = new lt.Group,
         p = [],
         d = new lt.Matrix4,
         bp = [],
+        /* v3.1：网格→材质档记录的局部映射（不能塞进 userData——拾取物 spawnPickup 走 root.clone(!0)，
+           three 的 Material/Mesh.copy 对 userData 做 JSON 深拷贝，放材质引用会拖慢克隆甚至抛环引用错误） */
+        meshRec = new Map,
         /* v3 真实全长等比：命名挂点候选（Mega Weapon Pack 的 "muzzle" 节点），归一化变换后取最前端点做枪口 */
         mp = [];
 
@@ -2709,8 +2829,10 @@ async function dgGlb(i, dgLen = .3) {
             for (let S of s.meshes[m.mesh].primitives) {
                 let T = new lt.BufferGeometry;
                 T.setAttribute("position", new lt.Float32BufferAttribute(c(S.attributes.POSITION), 3)), S.attributes.NORMAL != null && T.setAttribute("normal", new lt.Float32BufferAttribute(c(S.attributes.NORMAL), 3)), S.attributes.TEXCOORD_0 != null && T.setAttribute("uv", new lt.Float32BufferAttribute(c(S.attributes.TEXCOORD_0), 2)), S.indices != null && T.setIndex(new lt.BufferAttribute(c(S.indices, !0), 1)), T.applyMatrix4(A), S.attributes.NORMAL == null && T.computeVertexNormals();
-                let w = new lt.Mesh(T, h[S.material != null ? S.material : 0] || h[0]);
-                w.castShadow = w.receiveShadow = !1, f.add(w), B && bp.push(w)
+                let rec = h[S.material != null ? S.material : 0] || h[0],
+                    w = new lt.Mesh(T, rec.mat);
+                /* v3.1 阴影/裁剪标志对齐 pac9（原为全 !1）：只受影不投影，关视锥剔除防视模被误剔 */
+                w.castShadow = !1, w.receiveShadow = !0, w.frustumCulled = !1, meshRec.set(w, rec), f.add(w), B && bp.push(w)
             }
         for (let S of m.children || []) v(S, A, B)
     }
@@ -2728,8 +2850,15 @@ async function dgGlb(i, dgLen = .3) {
     }
     let S = dgLen / Math.max(b.x, b.y, b.z),
         T = new lt.Matrix4().makeScale(S, S, S).multiply(A).multiply(new lt.Matrix4().makeTranslation(-m.x, -m.y, -m.z));
+    /* v3.1 风化：几何先归一到最终视模尺度再铺顶点色——sm 的哈希噪声按世界坐标取整采样，
+       在归一化后铺才能让 60 把枪（各自原始尺度差异极大）拿到一致的颗粒密度。
+       法线掩码用 cC（三轴 |n|<.95，pac9 同款），只在明显朝外的面留锈斑，避免棱边两侧跳变；
+       第 5 参 .05 = 锈斑暖偏移（pac9 走自己的自建材质没传这个参数，故不受影响）。 */
     f.traverse(w => {
-        w.isMesh && w.geometry.applyMatrix4(T)
+        if (!w.isMesh) return;
+        w.geometry.applyMatrix4(T);
+        let info = meshRec.get(w);
+        info && info.styled && info.tint && sm(w.geometry, info.tint, .36, cC, .05)
     });
     let w = new lt.Box3().setFromObject(f),
         x = w.getSize(new lt.Vector3),
@@ -2756,6 +2885,16 @@ async function dgGlb(i, dgLen = .3) {
         for (let w2 of bp) b2.expandByObject(w2);
         k.barrelZ = +b2.getCenter(new lt.Vector3).z.toFixed(3)
     }
+    /* v3.1 材质诊断：本次建枪实际用到的材质档（按网格去重）+ 是否已铺顶点风化，随 info 带出，
+       由 dgAssemble/dgSwapModel 落进 window.__DG.materials 便于验收（pac9 不在此表）。 */
+    let used = [],
+        weathered = !1;
+    f.traverse(o => {
+        if (!o.isMesh) return;
+        let rec = meshRec.get(o);
+        o.geometry && o.geometry.attributes && o.geometry.attributes.color && (weathered = !0),
+        rec && rec.styled && used.indexOf(rec.band) < 0 && used.push(rec.band)
+    }), k.matsUsed = used, k.weathered = weathered, k.styledCount = used.length;
     return {
         root: f,
         info: k
@@ -2856,7 +2995,8 @@ function dgPlaceholder(i) {
         }),
         s = (o, r, a, l, c, u) => {
             let h = new lt.Mesh(new lt.BoxGeometry(o, r, a), n);
-            h.position.set(l, c, u), h.castShadow = h.receiveShadow = !1, t.add(h)
+            /* v3.1：占位盒材质保持朴素（加载期临时物，不做材质映射/风化），但阴影裁剪标志与正式模型/pac9 对齐 */
+            h.position.set(l, c, u), h.castShadow = !1, h.receiveShadow = !0, h.frustumCulled = !1, t.add(h)
         };
     /* 机匣(.12e宽×.1e高×.42e长) + 枪管(前端到 -0.5e) + 枪托(尾端到 +0.5e) + 握把/弹匣（底到 -0.13e，高约 .18e） */
     return s(e * .12, e * .1, e * .42, 0, 0, -.01 * e), s(e * .05, e * .05, e * .28, 0, 0, -.36 * e), s(e * .08, e * .08, e * .3, 0, 0, .35 * e), s(e * .08, e * .08, e * .08, 0, -.09 * e, .12 * e), s(e * .07, e * .08, e * .08, 0, -.09 * e, -.12 * e), {
@@ -2870,7 +3010,10 @@ function dgPlaceholder(i) {
     }
 }
 
-/* v3：占位几何的资源回收（替换正式模型后清理 GPU 侧 buffer，防 64 枪懒加载堆积显存） */
+/* v3：占位几何的资源回收（替换正式模型后清理 GPU 侧 buffer，防 64 枪懒加载堆积显存）
+   v3.1：材质来自 03 材质库（dgGlbMat 共用 3 个实例，且 mats.get 内部本身就按 key 缓存共享）——
+   共享实例一律不 dispose，只回收本函数范围内自建的几何 buffer，否则 dispos 掉一本枪会把全批枪变黑。
+   判据 userData.dgShared（仅对咱们织入 detail 的库材质打标记，pac9 自建材质不带标记、照常释放）。 */
 function dgDispose(root) {
     let mats = new Set,
         geos = new Set;
@@ -2878,7 +3021,7 @@ function dgDispose(root) {
         o.isMesh && (o.geometry && geos.add(o.geometry), o.material && (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => mats.add(m)))
     });
     for (let g of geos) g.dispose && g.dispose();
-    for (let m of mats) m.dispose && m.dispose()
+    for (let m of mats) m && !m.userData.dgShared && m.dispose && m.dispose()
 }
 
 /* 泛化视模工厂（spec §1/§5.3）：按 DGTypes[kind] 构建——deagle 与原实现数值逐一等价（手感保持），
@@ -2915,6 +3058,13 @@ function dgAssemble(i, kind, T, t) {
     a.name = "dg-flash", a.position.set(n.muzzle[0], n.muzzle[1], n.muzzle[2]), a.renderOrder = 10, a.visible = !1, e.add(a), e.traverse(l => {
         l.layers && l.layers.set(zc)
     }), i.camera.add(e), e.visible = !1;
+    /* v3.1 材质诊断（window.__DG.materials）：GLB 枪记录材质档与风化状态；占位/程序化枪按实际几何如实记 */
+    dgMatInfo[kind] = {
+        matsUsed: n.matsUsed || [],
+        weathered: n.weathered === !0,
+        placeholder: !!(n.names && n.names[0] === "placeholder:" + kind),
+        styled: (n.matsUsed || []).length > 0
+    };
     /* v3 数值验收：登记该 kind 的等比渲染记录；renderLen 先按当前几何实测（占位=目标值），换装后由 dgSwapModel 更新 */
     let dgr = dgRenderInfo[kind] || (dgRenderInfo[kind] = {
         kind: kind,
@@ -3191,6 +3341,13 @@ function dgAssemble(i, kind, T, t) {
         dgSwapModel(nt) {
             let old = t.root;
             e.remove(old), dgDispose(old), e.add(nt.root), t = nt, n = nt.info, w.info = n, dgModels[kind] = n;
+            /* v3.1：诊断随换装刷新——占位期的 {matsUsed: [], weathered:false} 要换成正式模型的真实值 */
+            dgMatInfo[kind] = {
+                matsUsed: n.matsUsed || [],
+                weathered: n.weathered === !0,
+                placeholder: !!(n.names && n.names[0] === "placeholder:" + kind),
+                styled: (n.matsUsed || []).length > 0
+            };
             let mz = n.muzzle;
             a.position.set(mz[0], mz[1], mz[2]);
             let wasVis = e.visible;
@@ -3221,7 +3378,7 @@ function dgBuildLazy(i, kind) {
     let w = dgAssemble(i, kind, T, dgPlaceholder(T));
     return dgModels[kind] || (dgModels[kind] = w.info), new Promise(resolve => {
         if (!T.model) return resolve(w);
-        dgGlb(T.model, dgTargetLen(T)).then(t => {
+        dgGlb(T.model, dgTargetLen(T), i).then(t => {
             w.dgSwapModel(t)
         }).catch(n => {
             console.warn("[dg] glb load failed (" + T.model + "), keeping placeholder:", n && n.message || n)
@@ -3235,7 +3392,7 @@ async function dgBuild(i, kind) {
     if (!T) throw new Error("[dg] unknown kind: " + kind);
     let t = null;
     if (T.model) try {
-        t = await dgGlb(T.model, dgTargetLen(T))
+        t = await dgGlb(T.model, dgTargetLen(T), i)
     } catch (n) {
         console.warn("[dg] glb load failed (" + T.model + "), placeholder fallback:", n)
     }
@@ -3686,6 +3843,15 @@ async function dgn(i) {
         models: dgModels,
         /* v3 数值验收：每把已建武器 {kind,oal,targetLen,renderLen}（renderLen=实测包围盒最长边；pac9 程序化不测=null） */
         render: dgRenderInfo,
+        /* v3.1 材质对齐诊断：每把已建枪 {matsUsed, weathered, styled, placeholder}（pac9 不在其中） */
+        materials: dgMatInfo,
+        /* v3.1：共用材质实例（3 档）与 program 缓存粒度（2 种 kind）——验收 shader 数量是否可控 */
+        get matPool() {
+            return {
+                bands: Object.keys(dgGlbMatCache.mats),
+                programs: "dg-glb-detail-<kind>|set（kind: 0=金属 2=聚合物）"
+            }
+        },
         get mode() {
             return i.mode === "rush" ? "rush" : "campaign"
         },
