@@ -1085,7 +1085,9 @@ function av(i, e, t, n = 2, s = !0, o = .02) {
         let v = Hc(i, e + (d ? .12 * Math.sin(d * 2.1) : 0), t + (d ? .18 * Math.cos(d * 1.7) : 0), (s ? Math.PI / 2 : 0) + o * (d % 2 ? -1 : 1.3), 0),
             g = .1 + d * (.5 + .1);
         for (let y of [-3.6, 0, 3.6]) Rn(i, v, "wood_dark", .14, .1, 4.2 - .2, y, g - .1 / 2, 0, .01);
-        let x = i.M(u[d % u.length]);
+        let x = i.M(u[d % u.length], {
+            scale: 8
+        });
         Rn(i, v, x, 10.4, .5 - .08, 4.2, 0, g + (.5 - .08) / 2, 0, .03), Rn(i, v, x, 10.4 - .5, .08, 4.2 - .5, 0, g + .5 - .04, 0, .02);
         for (let y of [-1.4, -.7, 0, .7, 1.4]) Rn(i, v, x, 10.4 - .9, .05, .09, 0, g + .5 + .02, y, .01);
         for (let y of [-1, 1])
