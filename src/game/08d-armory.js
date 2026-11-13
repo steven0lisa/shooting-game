@@ -381,13 +381,19 @@ var DGArmory = {};
             else S.renderer.readRenderTargetPixels(rt, 0, 0, 160, 120, dgArmBuf8);
             S.renderer.setRenderTarget(null);
         } finally {
-            S.pivot.remove(m.root);
-            if (oldRoot) {
-                S.pivot.add(oldRoot);
-                if (tr) oldRoot.position.set(tr[0], tr[1], tr[2]),
-                    oldRoot.rotation.set(tr[3], tr[4], tr[5]);
+            /* 缩略渲染期间可能发生 select 换装（S.pivotRoot 已指向新真模）——
+               恢复现场绝不能把新选中的模型踢掉、把旧占位装回（"盒状枪/白模"根因） */
+            if (S.pivotRoot === oldRoot) {
+                S.pivot.remove(m.root);
+                if (oldRoot) {
+                    S.pivot.add(oldRoot);
+                    if (tr) oldRoot.position.set(tr[0], tr[1], tr[2]),
+                        oldRoot.rotation.set(tr[3], tr[4], tr[5]);
+                }
+                S.pivotRoot = oldRoot;
+            } else if (m.root !== S.pivotRoot) {
+                S.pivot.remove(m.root)
             }
-            S.pivotRoot = oldRoot;
             S.ground.position.y = oldGY;
             S.flash.visible = oldFlashVis;
         }
