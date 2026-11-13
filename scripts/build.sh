@@ -23,4 +23,15 @@ cat src/00-runtime-head.js src/vendor/three.min.js $GAME $ENTRY > dist/game.js
 # 硬判据：产物存在且语法通过（不用管道，直看退出码）
 node --check dist/game.js
 test -f dist/game.js
-echo "BUILD_OK mode=$MODE bytes=$(wc -c < dist/game.js)"
+
+# 缓存破除：构建时间戳写进 index.html 的脚本引用（防浏览器吃旧包）
+STAMP=$(date +%s)
+python3 - "$STAMP" <<'PY'
+import re, sys
+stamp = sys.argv[1]
+p = "index.html"
+t = open(p, encoding="utf-8").read()
+t = re.sub(r'dist/game\.js(\?v=\d+)?', 'dist/game.js?v=' + stamp, t)
+open(p, "w", encoding="utf-8").write(t)
+PY
+echo "BUILD_OK mode=$MODE bytes=$(wc -c < dist/game.js) v=$STAMP"
