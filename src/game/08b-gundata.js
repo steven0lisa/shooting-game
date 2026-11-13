@@ -1,8 +1,9 @@
 /* ============================================================ 武器系统 v3 —— GUNDATA（武器数值表）
    契约见 notes/weapon-v3-spec.md §2；名册与来源见 notes/roster-built.md。
-   纯数据文件，不做任何运行时逻辑：本表 60 型武器由 08-weapons.js 按 slug 索引读取。
+   纯数据文件，不做任何运行时逻辑：本表 69 型武器由 08-weapons.js 按 slug 索引读取。
 
-   收录 60 把（手枪 15 + 长枪 45）——模型全部来自 3dassets.dev Mega Weapon Pack（CC0 1.0，无需署名），
+   收录 69 把（手枪 15 + 长枪 54 = 步枪/卡宾 20 + DMR 7 + 狙击 9 + 冲锋/PDW 9 + 霰弹枪 9）
+   ——模型全部来自 3dassets.dev Mega Weapon Pack（CC0 1.0，无需署名），
    已排除与既有定制实现重复的 4 件（Uzi 系折叠托 SMG ×2 / AI 底盘栓狙及带镜版 ×2）；
    既有的 pac9 / deagle / awp / mp5 / uzi 保留为独立高质量实现，不进本表。
 
@@ -94,4 +95,14 @@ var GUNDATA = [
         { slug: "rattler", name: "SIG MCX Rattler PDW", cat: "long", model: "assets/models/v3/rattler.glb", mag: 30, rpm: 800, fire: "auto", damage: 18.5, range: 130, adsFov: 52, bloom: 0.14, rc: 0.70, reloadT: 2, reloadE: 2.60, scaleLen: 0.30, oal: 0.570 },
         { slug: "rattlerf", name: "SIG MCX Rattler 战术型", cat: "long", model: "assets/models/v3/rattlerf.glb", mag: 30, rpm: 800, fire: "auto", damage: 18.8, range: 135, adsFov: 52, bloom: 0.14, rc: 0.72, reloadT: 2.05, reloadE: 2.65, scaleLen: 0.31, oal: 0.570 },
         { slug: "sten", name: "Sten Mk II 冲锋枪", cat: "long", model: "assets/models/v3/sten.glb", mag: 32, rpm: 550, fire: "auto", damage: 22.6, range: 145, adsFov: 52, bloom: 0.15, rc: 0.72, reloadT: 2.20, reloadE: 2.80, scaleLen: 0.36, oal: 0.762 },
+    /* ---- 霰弹枪（主武器 · 9） ---- */
+        { slug: "rem870", name: "雷明顿 M870 霰弹枪", cat: "long", model: "assets/models/v3/rem870.glb", mag: 6, rpm: 60, fire: "semi", damage: 95, range: 38, adsFov: 52, bloom: 0.20, rc: 1.45, reloadT: 2.80, reloadE: 3.50, scaleLen: 0.45, oal: 1.070 },
+        { slug: "versamax", name: "雷明顿 Versa Max 战术霰弹枪", cat: "long", model: "assets/models/v3/versamax.glb", mag: 7, rpm: 110, fire: "semi", damage: 72, range: 45, adsFov: 52, bloom: 0.22, rc: 1.55, reloadT: 2.90, reloadE: 3.60, scaleLen: 0.45, oal: 1.105 },
+        { slug: "saiga12", name: "Saiga-12 弹匣霰弹枪", cat: "long", model: "assets/models/v3/saiga12.glb", mag: 8, rpm: 120, fire: "semi", damage: 70, range: 42, adsFov: 52, bloom: 0.24, rc: 1.60, reloadT: 3, reloadE: 3.80, scaleLen: 0.45, oal: 1.145 },
+        { slug: "vepr12", name: "Molot Vepr-12 战术霰弹枪", cat: "long", model: "assets/models/v3/vepr12.glb", mag: 8, rpm: 125, fire: "semi", damage: 71, range: 43, adsFov: 52, bloom: 0.24, rc: 1.65, reloadT: 3.10, reloadE: 3.90, scaleLen: 0.45, oal: 1.120 },
+        { slug: "ksg", name: "Kel-Tec KSG 无托泵动霰弹枪", cat: "long", model: "assets/models/v3/ksg.glb", mag: 7, rpm: 70, fire: "semi", damage: 92, range: 40, adsFov: 52, bloom: 0.20, rc: 1.35, reloadT: 2.70, reloadE: 3.40, scaleLen: 0.45, oal: 0.663 },
+        { slug: "ksgf", name: "Kel-Tec KSG 战术型（全息瞄）", cat: "long", model: "assets/models/v3/ksgf.glb", mag: 7, rpm: 72, fire: "semi", damage: 93, range: 41, adsFov: 52, bloom: 0.21, rc: 1.38, reloadT: 2.75, reloadE: 3.45, scaleLen: 0.45, oal: 0.663 },
+        { slug: "citori", name: "Browning Citori 上下双管霰弹枪", cat: "long", model: "assets/models/v3/citori.glb", mag: 2, rpm: 50, fire: "semi", damage: 100, range: 44, adsFov: 52, bloom: 0.18, rc: 1.50, reloadT: 2.60, reloadE: 3.45, scaleLen: 0.45, oal: 1.156 },
+        { slug: "stevens311", name: "Stevens 311 平双管霰弹枪", cat: "long", model: "assets/models/v3/stevens311.glb", mag: 2, rpm: 48, fire: "semi", damage: 99, range: 42, adsFov: 52, bloom: 0.18, rc: 1.50, reloadT: 2.60, reloadE: 3.45, scaleLen: 0.45, oal: 1.156 },
+        { slug: "sawnoff", name: "截短双管霰弹枪", cat: "long", model: "assets/models/v3/sawnoff.glb", mag: 2, rpm: 75, fire: "semi", damage: 100, range: 35, adsFov: 52, bloom: 0.24, rc: 1.70, reloadT: 2.60, reloadE: 3.60, scaleLen: 0.32, oal: 0.500 },
 ];

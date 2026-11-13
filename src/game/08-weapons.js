@@ -3354,6 +3354,10 @@ function dgAssemble(i, kind, T, t) {
             e.traverse(C => {
                 C.layers && C.layers.set(zc)
             }), e.visible = wasVis;
+            /* 换装完成 → 重建该 kind 的地面拾取物（占位克隆体升级为正式模型） */
+            try {
+                dgPickupRefresh && dgPickupRefresh(kind)
+            } catch {}
             try {
                 e.updateMatrix(), e.traverse(C => {
                     C.isMesh && C.geometry && C.geometry.computeBoundingSphere && C.geometry.computeBoundingSphere()
@@ -3372,6 +3376,7 @@ function dgAssemble(i, kind, T, t) {
 
 /* v3：占位盒体实例立即建（同步）→ 后台 dgGlb 加载 → dgSwapModel 原位替换。
    返回的 Promise 永不 reject（失败保持占位，游戏不崩）。 */
+var dgPickupRefresh = null;
 function dgBuildLazy(i, kind) {
     let T = DGTypes[kind];
     if (!T) return Promise.reject(new Error("[dg] unknown kind: " + kind));
@@ -3535,7 +3540,7 @@ async function dgn(i) {
         let model = src.root.clone(!0),
             drop = [];
         model.position.set(0, 0, 0), model.rotation.set(0, 0, 0), model.visible = !0, model.traverse(o => {
-            o.layers && o.layers.set(vf);
+            o.layers && o.layers.set(vf), o.isMesh && o.geometry && (o.geometry = o.geometry.clone());
             let mm = o.material;
             o.isMesh && mm && (o.name === "dg-flash" || mm.name === "glove_fabric" || mm.uniforms && mm.uniforms.uInt || mm.type === "MeshBasicMaterial" && mm.blending === lt.AdditiveBlending) && drop.push(o)
         });
@@ -3562,6 +3567,19 @@ async function dgn(i) {
         let ix = pickups.indexOf(p);
         ix >= 0 && pickups.splice(ix, 1), p.pivot.parent && p.pivot.parent.remove(p.pivot)
     }
+
+    /* 换装回调：dgSwapModel 完成后按 kind 重建地面拾取物（携弹药原样重建） */
+    dgPickupRefresh = function(k) {
+        for (let p of pickups.slice()) {
+            if (p.kind !== k) continue;
+            let px = p.pos.x,
+                pz = p.pos.z,
+                py = p.pos.y,
+                mg = p.mag,
+                rs = p.reserve;
+            removePickup(p), spawnPickup(k, px, pz, mg, py + 1, rs)
+        }
+    };
 
     /* v3（spec §4）：集装箱刷枪——读 level.placed 账本（{name,x,y,z,yaw}，name 含 "container"）。
        只取最底层（y<0.05）可步行到达的点位；每点随机一把（全池=内置5款+GUNDATA，排除起手 pac9），
@@ -3603,8 +3621,9 @@ async function dgn(i) {
                 ux = Math.cos(yaw),
                 uz = -Math.sin(yaw),
                 off = size.L * .28 * (rand() * 2 - 1),
-                wx = p.x + ux * off,
-                wz = p.z + uz * off,
+                side = (rand() < .5 ? 1 : -1) * (1.77 + rand() * .5),
+                wx = p.x + ux * off + uz * side,
+                wz = p.z + uz * off - ux * side,
                 kind = pool[s % pool.length];
             spawnPickup(kind, wx, wz, DGTypes[kind].mag, Math.max((p.y || 0) + .1, 1.2), DGTypes[kind].reserve)
         }

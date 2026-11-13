@@ -4602,7 +4602,7 @@ function u_(i, e, t) {
         });
         let te = e.currentTime;
         le = te, te - R > .28 && fo(1), J = Math.min(J, .55), Y > .3 && (Y = Math.min(1, Y + .015))
-    }), ln("weapon:dry", te => ze(te && te.w === "deagle" ? "pistol_dry" : "rifle_dry", {
+    }), ln("weapon:dry", te => ze(te && te.w === "deagle" ? "pistol_dry" : te && te.w && Go[te.w + "_dry"] ? te.w + "_dry" : "rifle_dry", {
         gain: .9
     }) || ze("rifle_dry", {
         gain: .9
@@ -4624,6 +4624,19 @@ function u_(i, e, t) {
             }) : te.phase === "bolt" && ze(te.w + "_reload", {
                 gain: .85,
                 pitch: 1.12
+            })
+        } else if (te && te.w && Go[te.w + "_reload"]) {
+            te.phase === "magout" ? ze(te.w + "_reload", {
+                gain: .8,
+                pitch: 1.06
+            }) : te.phase === "magin" ? ze(te.w + "_reload", {
+                gain: .95
+            }) : te.phase === "bolt" ? ze(te.w + "_reload", {
+                gain: .85,
+                pitch: 1.12
+            }) : te.phase === "start" && ze(te.w + "_reload", {
+                gain: .5,
+                pitch: 1.25
             })
         } else te.phase === "magout" ? ze("reload_magout") : te.phase === "magin" ? ze("reload_magin") : te.phase === "bolt" ? ze("reload_bolt") : te.phase === "start" && ze("jump", {
             gain: .5,
