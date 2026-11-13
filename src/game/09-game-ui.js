@@ -2280,6 +2280,7 @@ function pM(i, e) {
           <button class="btn primary mode" data-act="deploy" data-mode="campaign">开始行动 · 战役</button>
           <button class="btn primary mode rush" data-act="deploy" data-mode="rush">开始行动 · 冲刺</button>
           <button class="btn" data-act="settings">设置</button>
+          <button class="btn" data-act="armory">武器库</button>
           <button class="btn" data-act="about">项目介绍</button>
           <button class="btn m-only-narrow" data-act="controls">操作说明</button>
         </div>
@@ -2359,6 +2360,26 @@ function pM(i, e) {
         <p class="panel-note">摇杆移动与转动视角 · RT 开火 · LT 瞄准 · A 跳跃 · B 蹲伏 · X 换弹 · Y 切断中继 · L3 冲刺 · Start 暂停。</p>
       </div>
     </div>
+
+    <div class="armory" role="dialog" aria-modal="true" aria-label="武器库" hidden>
+      <header class="arm-head">
+        <div class="arm-title"><span class="h-k">几猫港区 · 装备预览</span><b class="arm-h1">武器库</b></div>
+        <div class="arm-actions">
+          <button class="btn small" data-act="arm-testfire">试射</button>
+          <button class="btn small" data-act="arm-close" aria-label="关闭武器库">✕ 关闭</button>
+        </div>
+      </header>
+      <div class="arm-body">
+        <nav class="arm-list" aria-label="武器列表"></nav>
+        <section class="arm-main">
+          <div class="arm-viewhead"><b class="arm-wname">—</b><span class="arm-wgroup"></span></div>
+          <div class="arm-view"></div>
+          <dl class="arm-params"></dl>
+        </section>
+      </div>
+    </div>
+
+    <div class="arm-toast" role="status"></div>
 
     <div class="loc-card" aria-hidden="true"><i></i><b>几猫港区 · 四号泊位 · 05:42</b><span>几猫突击小队 · 单兵行动，无人支援</span></div>
   `, t.appendChild(s);
@@ -2451,6 +2472,114 @@ function pM(i, e) {
         for (let T of r(".tab")) T.setAttribute("aria-selected", String(T.dataset.tab === U));
         for (let T of r(".panel-b")) T.hidden = T.dataset.pane !== U
     }
+    /* ---- 武器库（armory）：容器已在模板里，这里接 DGArmory 引擎（08d，构建序列在 08 与 09 之间）。
+       防御：window.DGArmory 缺失时点击只提示不崩。所有局部名用 arm* 前缀防撞。---- */
+    var armBarMax = { "\u4f24\u5bb3": 60, "\u5c04\u901f": 1000, "\u5f39\u531a": 100, "\u5907\u5f39": 400, "\u5c04\u7a0b": 600, "\u6362\u5f39": 5, "\u5168\u957f": 1200, "ADS \u89c6\u89d2": 90, "\u540e\u5750": 3, "\u6563\u5e03": 1 };
+    let armGrpOrder = ["手枪", "步枪", "卡宾", "精确射手", "狙击", "冲锋枪", "霰弹枪"],
+        armEl = o(".armory"),
+        armList = o(".arm-list"),
+        armView = o(".arm-view"),
+        armParams = o(".arm-params"),
+        armWName = o(".arm-wname"),
+        armWGroup = o(".arm-wgroup"),
+        armToastEl = o(".arm-toast"),
+        armApi = null,
+        armSelKind = "",
+        armEsc = null,
+        armMsgTimer = 0;
+
+    function armMsg(U) {
+        armToastEl.textContent = U || "", armToastEl.classList.toggle("on", !!U), clearTimeout(armMsgTimer);
+        U && (armMsgTimer = setTimeout(() => {
+            armToastEl.textContent = "", armToastEl.classList.remove("on")
+        }, 2200))
+    }
+
+    function armRenderStats(U, T) {
+        armParams.innerHTML = "";
+        for (let D of Object.entries(T || {})) {
+            let C = document.createElement("div");
+            C.className = "arm-p";
+            let G = Number(D[1]) || 0,
+                W = Math.max(0, Math.min(1, armBarMax[D[0]] ? G / armBarMax[D[0]] : 0)),
+                L = document.createElement("i");
+            L.style.width = (W * 100).toFixed(1) + "%", C.innerHTML = `<dt>${D[0]}</dt><dd>${D[1]}</dd>`, C.appendChild(L), armParams.appendChild(C)
+        }
+    }
+
+    function armPickItem(U, T) {
+        if (armApi && armApi.select) try {
+            armApi.select(U)
+        } catch (D) {
+            console.error("[armory] select threw", D)
+        }
+        armSelKind = U, armWName.textContent = T.name, armWGroup.textContent = T.group || "", armRenderStats(U, armApi && armApi.stats ? armApi.stats(U) || {} : {});
+        for (let D of r(".arm-item")) D.classList.toggle("on", D.dataset.kind === U)
+    }
+
+    function armBuildList() {
+        if (!armApi || !armApi.catalog) return;
+        let U = armApi.catalog() || [],
+            T = new Map;
+        for (let W of U) {
+            let L = W.group || "";
+            T.has(L) || T.set(L, []), T.get(L).push(W)
+        }
+        armList.innerHTML = "";
+        for (let W of armGrpOrder) {
+            let L = T.get(W);
+            if (!L || !L.length) continue;
+            let P = document.createElement("div");
+            P.className = "arm-grp", P.innerHTML = `<div class="arm-grp-k h-k">${W}</div>`;
+            for (let Y of L) {
+                let V = document.createElement("button");
+                V.type = "button", V.className = "arm-item", V.dataset.kind = Y.kind, V.innerHTML = `<span class="arm-thumb" aria-hidden="true">${String(Y.name||"?").trim().charAt(0)}</span><span class="arm-name">${Y.name}</span>`;
+                let G = V.querySelector(".arm-thumb");
+                V.addEventListener("click", () => armPickItem(Y.kind, Y)), armApi.thumb && armApi.thumb(Y.kind).then(D => {
+                    V.isConnected && V.dataset.kind === Y.kind && D && (V.classList.add("thumbed"), G.replaceChildren(D))
+                }).catch(() => {}), P.appendChild(V)
+            }
+            armList.appendChild(P)
+        }
+        let D = armSelKind ? armList.querySelector(`.arm-item[data-kind="${CSS.escape(armSelKind)}"]`) : null;
+        (D || armList.querySelector(".arm-item")) && (D || armList.querySelector(".arm-item")).click()
+    }
+
+    function armClose() {
+        armMsg(""), armEl.hidden = !0, armEl.classList.remove("on"), armApi && (armApi.setAutoFire && armApi.setAutoFire(!1), armApi.close && armApi.close()), armEsc && (document.removeEventListener("keydown", armEsc), armEsc = null), p === "title" && (s.dataset.screen = "title", s.classList.add("open"))
+    }
+
+    function armOpen(U) {
+        let T = window.DGArmory;
+        if (!T || !T.mount) {
+            armMsg("武器库加载中，请稍候");
+            return
+        }
+        U.preventDefault(), U.stopPropagation(), armApi = T;
+        try {
+            T.attach && T.attach(window.__G)
+        } catch (D) {
+            console.error("[armory] attach threw", D)
+        }
+        try {
+            T.mount(armList, armView, armParams)
+        } catch (D) {
+            console.error("[armory] mount threw", D), armMsg("武器库初始化失败");
+            return
+        }
+        try {
+            T.open && T.open(), T.setAutoFire && T.setAutoFire(!0)
+        } catch (D) {
+            console.error("[armory] open threw", D)
+        }
+        armEl.hidden = !1, armEl.classList.add("on"), s.dataset.screen = "none", s.classList.remove("open"), armBuildList(), armEsc = D => {
+            D.code === "Escape" && (D.preventDefault(), D.stopPropagation(), armClose())
+        }, document.addEventListener("keydown", armEsc)
+    }
+    armEl.addEventListener("click", U => {
+        let T = U.target.closest("button");
+        T && T.dataset.act === "arm-close" ? armClose() : T && T.dataset.act === "arm-testfire" && armApi && armApi.shotFX && armApi.shotFX()
+    });
 
     function H() {
         let U = s.querySelector(`.m-screen[data-s="${p}"] .btn.primary`);
@@ -2472,7 +2601,7 @@ function pM(i, e) {
             return
         }
         let D = T.dataset.act;
-        D === "about" ? w("about") : D === "settings" ? w("settings") : D === "controls" ? w("controls") : D === "close-panel" ? S() : D === "invert" ? (n.invertY = !n.invertY, v("invertY"), g(), Wf(n)) : D === "fullscreen" ? M() : D && e[D] && e[D](U)
+        D === "about" ? w("about") : D === "settings" ? w("settings") : D === "controls" ? w("controls") : D === "close-panel" ? S() : D === "invert" ? (n.invertY = !n.invertY, v("invertY"), g(), Wf(n)) : D === "fullscreen" ? M() : D === "armory" ? armOpen(U) : D && e[D] && e[D](U)
     }), s.addEventListener("mouseover", U => {
         let T = U.target.closest("button");
         T && U.relatedTarget && !T.contains(U.relatedTarget) && i.events.emit("ui:hover", {})
